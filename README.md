@@ -1,6 +1,14 @@
-# [WIP] Attention is all you need: A Pytorch Implementation
+# Attention is all you need: A Pytorch Implementation
 
 This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)". 
+
+State-of-the-art of the Machine Translation: WMT 2014 English- to-German translation task. (so far)
+
+A novel sequence to sequence framework without using Convolution operation or Recurrent structure.
+
+The most important part is the self-attention mechanism.
+
+To learn more about self-attention mechanism, you can read "[A Structured Self-attentive Sentence Embedding](https://arxiv.org/abs/1703.03130)".
 
 <img src="http://imgur.com/1krF2R6.png" width="250">
 
