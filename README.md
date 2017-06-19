@@ -14,9 +14,9 @@ python preprocess.py -train_src <train.src.txt> -train_tgt <train.tgt.txt> -vali
 ```bash
 python train.py -data output.pt
 ```
-## 2) Testing (WIP)
+## 2) Testing
+### TODO
+  - **Beam search** 
 
-# TODO
-- **Beam search** 
-
+---
 If there is any suggestion or error, feel free to fire an issue. :)
