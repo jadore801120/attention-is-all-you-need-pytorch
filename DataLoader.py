@@ -1,9 +1,9 @@
 ''' Data Loader class for training iteration '''
 import random
-import Constants
 import numpy as np
 import torch
 from torch.autograd import Variable
+import transformer.Constants as Constants
 
 class DataLoader(object):
     ''' For data iteration '''

@@ -1,5 +1,5 @@
 '''
-This is a PyTorch implementation of Attention is all you need.
+This is a PyTorch implementation of "Attention is all you need".
 '''
 
 import argparse
@@ -8,8 +8,8 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import Constants
-from Model import Transformer
+import transformer.Constants as Constants
+from transformer.Models import Transformer
 from DataLoader import DataLoader
 
 def get_performance(crit, pred, gold, smoothing=False, num_class=None):
@@ -40,7 +40,9 @@ def train_epoch(model, training_data, crit, optimizer):
     n_total_words = 0
     n_total_correct = 0
 
-    for batch in tqdm(training_data, mininterval=2, desc='Training', leave=False):
+    for batch in tqdm(
+            training_data, mininterval=2,
+            desc='  - (Training)   ', leave=False):
 
         # prepare data
         src, tgt = batch
@@ -72,7 +74,9 @@ def eval_epoch(model, validation_data, crit):
     n_total_words = 0
     n_total_correct = 0
 
-    for batch in tqdm(validation_data, mininterval=2, desc='Evaluation', leave=False):
+    for batch in tqdm(
+            validation_data, mininterval=2,
+            desc='  - (Validation) ', leave=False):
 
         # prepare data
         src, tgt = batch
@@ -129,9 +133,11 @@ def main():
     parser.add_argument('-d_word_vec', default=512)
     parser.add_argument('-d_model', default=512)
     parser.add_argument('-d_inner_hid', default=1024)
+    parser.add_argument('-d_k', default=64)
+    parser.add_argument('-d_v', default=64)
 
-    parser.add_argument('-n_layers', type=int, default=4)
     parser.add_argument('-n_head', type=int, default=8)
+    parser.add_argument('-n_layers', type=int, default=4)
     parser.add_argument('-n_warmup_steps', type=int, default=4000)
 
     parser.add_argument('-dropout', type=float, default=0.5)
@@ -141,9 +147,10 @@ def main():
     opt = parser.parse_args()
     opt.cuda = not opt.no_cuda
 
+    #========= Loading Dataset =========#
     data = torch.load(opt.data)
 
-    #========= Preparing Dataset =========#
+    #========= Preparing DataLoader =========#
     training_data = DataLoader(
         data['train']['src'],
         data['dict']['src'],

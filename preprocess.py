@@ -1,7 +1,7 @@
 ''' Handling the data io '''
 import argparse
 import torch
-import Constants
+import transformer.Constants as Constants
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-train_src', required=True)
