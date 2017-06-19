@@ -2,7 +2,7 @@
 
 This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)". 
 
-State-of-the-art performance on **WMT 2014 English-to-German translation task**. (2017/06/13)
+State-of-the-art performance on **WMT 2014 English-to-German translation task**. (2017/06/12)
 
 A novel sequence to sequence framework utilizes the *self-attention mechanism*, instead of Convolution operation or Recurrent structure.
 > To learn more about self-attention mechanism, you could read "[A Structured Self-attentive Sentence Embedding](https://arxiv.org/abs/1703.03130)".
