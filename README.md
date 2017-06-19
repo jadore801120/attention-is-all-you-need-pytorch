@@ -28,5 +28,11 @@ python train.py -data <output.pt> -embs_share_weight -proj_share_weight
 ### TODO
   - **Beam search** 
 
+# Requirement
+- python 3.4+
+- pytorch 0.1.12
+- tqdm
+- numpy
+
 ---
 If there is any suggestion or error, feel free to fire an issue to let me know. :)
