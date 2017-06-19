@@ -111,11 +111,11 @@ def main():
             'src': src_word2idx,
             'tgt': tgt_word2idx},
         'train': {
-            'src':train_src_insts,
-            'tgt':train_tgt_insts},
+            'src': train_src_insts,
+            'tgt': train_tgt_insts},
         'valid': {
-            'src':valid_tgt_insts,
-            'tgt':valid_src_insts}}
+            'src': valid_tgt_insts,
+            'tgt': valid_src_insts}}
 
     print('[Info] Dumping the processed data to pickle file', opt.output)
     torch.save(data, opt.output)

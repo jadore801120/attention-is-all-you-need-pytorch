@@ -141,6 +141,8 @@ def main():
     parser.add_argument('-n_warmup_steps', type=int, default=4000)
 
     parser.add_argument('-dropout', type=float, default=0.5)
+    parser.add_argument('-embs_share_weight', action='store_true')
+    parser.add_argument('-proj_share_weight', action='store_true')
 
     parser.add_argument('-no_cuda', action='store_true')
 
@@ -166,12 +168,17 @@ def main():
         batch_size=opt.batch_size)
 
     #========= Preparing Model =========#
+
+    if opt.embs_share_weight and training_data.src_word2idx != training_data.tgt_word2idx:
+        print('[Warning]',
+              'The src/tgt word2idx table are different but asked to share word embedding.')
+
     transformer = Transformer(
         training_data.src_vocab_size,
         training_data.tgt_vocab_size,
         data['setting'].max_seq_len,
-        proj_share_weight=True,
-        embs_share_weight=True,
+        proj_share_weight=opt.proj_share_weight,
+        embs_share_weight=opt.embs_share_weight,
         d_model=opt.d_model,
         d_word_vec=opt.d_word_vec,
         d_inner_hid=opt.d_inner_hid,
@@ -179,7 +186,7 @@ def main():
         n_head=opt.n_head,
         dropout=opt.dropout)
 
-    print(transformer)
+    #print(transformer)
 
     optimizer = optim.Adam(
         transformer.get_trainable_parameters(),

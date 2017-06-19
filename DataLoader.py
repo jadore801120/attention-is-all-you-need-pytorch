@@ -60,6 +60,7 @@ class DataLoader(object):
     def src_idx2word(self):
         ''' Property for index dictionary '''
         return self._src_idx2word
+
     @property
     def tgt_idx2word(self):
         ''' Property for index dictionary '''
