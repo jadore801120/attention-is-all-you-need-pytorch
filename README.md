@@ -24,4 +24,4 @@ python train.py -data <output.pt>
   - **Beam search** 
 
 ---
-If there is any suggestion or error, feel free to fire an issue. :)
+If there is any suggestion or error, feel free to fire an issue to let me know. :)
