@@ -5,6 +5,7 @@ This is a PyTorch implementation of the Transformer model in "[Attention is All 
 <img src="http://imgur.com/1krF2R6.png" width="250">
 
 The project is still work in progress, now only support training.
+
 Translating will be available soon.
 
 # Usage
