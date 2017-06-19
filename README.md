@@ -2,7 +2,7 @@
 
 This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)". 
 
-State-of-the-art of the Machine Translation: WMT 2014 English- to-German translation task. (so far)
+State-of-the-art performance on **WMT 2014 English-to-German translation task**. (so far)
 
 A novel sequence to sequence framework without using Convolution operation or Recurrent structure.
 
