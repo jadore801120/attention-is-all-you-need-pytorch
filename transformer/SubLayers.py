@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 from transformer.Modules import Linear, ScaledDotProductAttention, LayerNormalization
 
+__author__ = "Yu-Hsiang Huang"
+
 class MultiHeadAttention(nn.Module):
     ''' Multi-Head Attention module '''
 

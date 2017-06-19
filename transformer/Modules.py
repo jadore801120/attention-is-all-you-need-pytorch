@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 
+__author__ = "Yu-Hsiang Huang"
+
 class Linear(nn.Module):
     ''' Simple Linear layer with xavier init '''
     def __init__(self, d_in, d_out, bias=True):
