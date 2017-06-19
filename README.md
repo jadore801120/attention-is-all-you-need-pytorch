@@ -2,7 +2,7 @@
 
 This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)". 
 
-![](http://imgur.com/1krF2R6)
+![](http://imgur.com/1krF2R6.png)
 
 The project is still work in progress, now only support training.
 Translating will be available soon.
