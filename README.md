@@ -1,10 +1,9 @@
 # Attention is all you need: A Pytorch Implementation
 
-This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)". 
+This is a PyTorch implementation of the Transformer model in "[Attention is All You Need](https://arxiv.org/abs/1706.03762)" (Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin, arxiv, 2017). 
 
-State-of-the-art performance on **WMT 2014 English-to-German translation task**. (2017/06/12)
 
-A novel sequence to sequence framework utilizes the *self-attention mechanism*, instead of Convolution operation or Recurrent structure.
+A novel sequence to sequence framework utilizes the *self-attention mechanism*, instead of Convolution operation or Recurrent structure, and achieve the state-of-the-art performance on **WMT 2014 English-to-German translation task**. (2017/06/12)
 > To learn more about self-attention mechanism, you could read "[A Structured Self-attentive Sentence Embedding](https://arxiv.org/abs/1703.03130)".
 
 <img src="http://imgur.com/1krF2R6.png" width="250">
@@ -12,6 +11,8 @@ A novel sequence to sequence framework utilizes the *self-attention mechanism*, 
 The project is still in WIP, now only support training.
 
 Translating (Beam search) will be available soon.
+
+The official Tensorflow Implementation can be found in: [tensorflow/tensor2tensor](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py).
 
 # Usage
 
@@ -35,7 +36,7 @@ python train.py -data output.pt -embs_share_weight -proj_share_weight
 - numpy
 
 # Acknowledgement
-- The project structure is heavily learned from [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
+- The project structure is heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
 
 ---
 If there is any suggestion or error, feel free to fire an issue to let me know. :)
