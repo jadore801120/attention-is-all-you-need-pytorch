@@ -66,6 +66,7 @@ def main():
     parser.add_argument('-min_word_count', type=int, default=5)
     parser.add_argument('-keep_case', action='store_true')
     parser.add_argument('-share_vocab', action='store_true')
+    parser.add_argument('-vocab', default=None)
 
     opt = parser.parse_args()
 
@@ -87,16 +88,24 @@ def main():
         valid_src_word_insts = valid_src_word_insts[:min_inst_count]
         valid_tgt_word_insts = valid_tgt_word_insts[:min_inst_count]
 
-    if opt.share_vocab:
-        print('[Info] Build shared vocabulary for source and target.')
-        word2idx = build_vocab_idx(
-            train_src_word_insts + train_tgt_word_insts, opt.min_word_count)
-        src_word2idx = tgt_word2idx = word2idx
+    if opt.vocab:
+        predefined_data = torch.load(opt.vocab)
+        assert 'dict' in predefined_data
+
+        print('[Info] Pre-defined vocabulary found.')
+        src_word2idx = predefined_data['dict']['src']
+        tgt_word2idx = predefined_data['dict']['tgt']
     else:
-        print('[Info] Build vocabulary for source.')
-        src_word2idx = build_vocab_idx(train_src_word_insts, opt.min_word_count)
-        print('[Info] Build vocabulary for target.')
-        tgt_word2idx = build_vocab_idx(train_tgt_word_insts, opt.min_word_count)
+        if opt.share_vocab:
+            print('[Info] Build shared vocabulary for source and target.')
+            word2idx = build_vocab_idx(
+                train_src_word_insts + train_tgt_word_insts, opt.min_word_count)
+            src_word2idx = tgt_word2idx = word2idx
+        else:
+            print('[Info] Build vocabulary for source.')
+            src_word2idx = build_vocab_idx(train_src_word_insts, opt.min_word_count)
+            print('[Info] Build vocabulary for target.')
+            tgt_word2idx = build_vocab_idx(train_tgt_word_insts, opt.min_word_count)
 
     print('[Info] Convert source word instances into sequences of word index.')
     train_src_insts = convert_instance_to_idx_seq(train_src_word_insts, src_word2idx)
