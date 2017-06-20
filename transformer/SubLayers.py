@@ -43,7 +43,6 @@ class MultiHeadAttention(nn.Module):
         outputs = torch.cat(outputs, 2)
         outputs = self.proj(outputs.view(-1, outputs.size(2))).view_as(residual)
         outputs = self.dropout(outputs)
-        attns = torch.cat(attns)
 
         return self.layer_norm(outputs + residual), attns
 
