@@ -26,6 +26,9 @@ class LayerNormalization(nn.Module):
         self.b_2 = nn.Parameter(torch.zeros(d_hid), requires_grad=True)
 
     def forward(self, z):
+        if z.size(1) == 1:
+            return z
+
         mu = torch.mean(z, dim=1)
         sigma = torch.std(z, dim=1)
         ln_out = (z - mu.expand_as(z)) / (sigma.expand_as(z) + self.eps)
