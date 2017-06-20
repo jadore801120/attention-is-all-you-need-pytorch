@@ -43,7 +43,7 @@ class Encoder(nn.Module):
     ''' A encoder model with self attention mechanism. '''
 
     def __init__(
-            self, n_src_vocab, n_max_seq, n_layers=4, n_head=8,
+            self, n_src_vocab, n_max_seq, n_layers=4, n_head=8, d_k=64, d_v=64,
             d_word_vec=64, d_model=64, d_inner_hid=200, dropout=0.1):
 
         super(Encoder, self).__init__()
@@ -58,7 +58,8 @@ class Encoder(nn.Module):
         self.src_word_emb = nn.Embedding(n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
 
         self.layer_stack = nn.ModuleList([
-            EncoderLayer(d_model, d_inner_hid, n_head) for _ in range(n_layers)])
+            EncoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
+            for _ in range(n_layers)])
 
     def forward(self, src_seq, src_pos):
         # Word embedding look up
@@ -81,7 +82,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
     def __init__(
-            self, n_tgt_vocab, n_max_seq, n_layers=4, n_head=8,
+            self, n_tgt_vocab, n_max_seq, n_layers=4, n_head=8, d_k=64, d_v=64,
             d_word_vec=64, d_model=64, d_inner_hid=200, dropout=0.1):
 
         super(Decoder, self).__init__()
@@ -99,7 +100,8 @@ class Decoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.layer_stack = nn.ModuleList([
-            DecoderLayer(d_model, d_inner_hid, n_head) for _ in range(n_layers)])
+            DecoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
+            for _ in range(n_layers)])
 
     def forward(self, tgt_seq, tgt_pos, src_seq, enc_outputs):
         # Word embedding look up

@@ -9,7 +9,7 @@ __author__ = "Yu-Hsiang Huang"
 class MultiHeadAttention(nn.Module):
     ''' Multi-Head Attention module '''
 
-    def __init__(self, d_model, n_head, d_k=64, d_v=64, res_dropout=0.1):
+    def __init__(self, n_head, d_model, d_k, d_v, dropout=0.1):
         super(MultiHeadAttention, self).__init__()
 
         self.w_qs = nn.ModuleList([
@@ -22,7 +22,7 @@ class MultiHeadAttention(nn.Module):
         self.attention = ScaledDotProductAttention(d_model)
         self.layer_norm = LayerNormalization(d_model)
         self.proj = Linear(n_head*d_v, d_model)
-        self.dropout = nn.Dropout(res_dropout)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, q, k, v, attn_mask=None):
         residual = q
@@ -49,12 +49,12 @@ class MultiHeadAttention(nn.Module):
 class PositionwiseFeedForward(nn.Module):
     ''' A two-feed-forward-layer module '''
 
-    def __init__(self, d_hid, d_inner_hid, res_dropout=0.1):
+    def __init__(self, d_hid, d_inner_hid, dropout=0.1):
         super(PositionwiseFeedForward, self).__init__()
         self.w_1 = nn.Conv1d(d_hid, d_inner_hid, 1) # position-wise
         self.w_2 = nn.Conv1d(d_inner_hid, d_hid, 1) # position-wise
         self.layer_norm = LayerNormalization(d_hid)
-        self.dropout = nn.Dropout(res_dropout)
+        self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
 
     def forward(self, x):
