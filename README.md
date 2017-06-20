@@ -9,7 +9,10 @@ A novel sequence to sequence framework utilizes the **self-attention mechanism**
 
 > To learn more about self-attention mechanism, you could read "[A Structured Self-attentive Sentence Embedding](https://arxiv.org/abs/1703.03130)".
 
+<p align="center">
 <img src="http://imgur.com/1krF2R6.png" width="250">
+</p>
+
 
 The project support training and translation with trained model now.
 
@@ -44,7 +47,8 @@ python translate.py -model trained.chkpt -vocab data.pt -src test.src.txt
 ```
 
 ---
-### TODO
+# TODO
+  - Label smoothing
   - Evaluation on the generated text.
   - Attention weight plot.
 ---
