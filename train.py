@@ -1,5 +1,5 @@
 '''
-This is a PyTorch implementation of "Attention is all you need".
+This script handling the training process.
 '''
 
 import argparse
@@ -109,6 +109,7 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         for param_group in optimizer.param_groups:
             param_group['lr'] = new_lr
 
+    valid_accus = []
     for epoch_i in range(opt.epoch):
         print('[ Epoch', epoch_i, ']')
 
@@ -120,6 +121,26 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         valid_loss, valid_accu = eval_epoch(model, validation_data, crit)
         print('  - (Validation) loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
             loss=valid_loss, accu=100*valid_accu))
+
+        valid_accus += [valid_accu]
+
+        #model_state_dict = (model.module.state_dict() if opt.cuda else model.state_dict())
+        model_state_dict = model.state_dict()
+        checkpoint = {
+            'model': model_state_dict,
+            'settings': opt,
+            'epoch': epoch_i}
+
+        if opt.save:
+            if opt.save_mode == 'all':
+                model_name = opt.save + '_accu_{accu:3.3}.chkpt'.format(accu=100*valid_accu)
+                torch.save(checkpoint, model_name)
+            elif opt.save_mode == 'best':
+                model_name = opt.save + '.chkpt'
+                if valid_accu >= max(valid_accus):
+                    torch.save(checkpoint, model_name)
+                    print('    - [Info] The checkpoint file has been updated.')
+
 
 def main():
     ''' Main function '''
@@ -144,6 +165,10 @@ def main():
     parser.add_argument('-embs_share_weight', action='store_true')
     parser.add_argument('-proj_share_weight', action='store_true')
 
+    parser.add_argument('-log', default=None)
+    parser.add_argument('-save', default=None)
+    parser.add_argument('-save_mode', type=str, choices=['all', 'best'], default='best')
+
     parser.add_argument('-no_cuda', action='store_true')
 
     opt = parser.parse_args()
@@ -151,34 +176,39 @@ def main():
 
     #========= Loading Dataset =========#
     data = torch.load(opt.data)
+    opt.max_seq_len = data['settings'].max_seq_len
 
     #========= Preparing DataLoader =========#
     training_data = DataLoader(
-        data['train']['src'],
         data['dict']['src'],
-        data['train']['tgt'],
         data['dict']['tgt'],
+        src_insts=data['train']['src'],
+        tgt_insts=data['train']['tgt'],
         batch_size=opt.batch_size)
 
     validation_data = DataLoader(
-        data['valid']['src'],
         data['dict']['src'],
-        data['valid']['tgt'],
         data['dict']['tgt'],
+        src_insts=data['valid']['src'],
+        tgt_insts=data['valid']['tgt'],
         batch_size=opt.batch_size)
 
-    #========= Preparing Model =========#
+    opt.src_vocab_size = training_data.src_vocab_size
+    opt.tgt_vocab_size = training_data.tgt_vocab_size
 
+    #========= Preparing Model =========#
     if opt.embs_share_weight and training_data.src_word2idx != training_data.tgt_word2idx:
         print('[Warning]',
               'The src/tgt word2idx table are different but asked to share word embedding.')
 
     transformer = Transformer(
-        training_data.src_vocab_size,
-        training_data.tgt_vocab_size,
-        data['setting'].max_seq_len,
+        opt.src_vocab_size,
+        opt.tgt_vocab_size,
+        opt.max_seq_len,
         proj_share_weight=opt.proj_share_weight,
         embs_share_weight=opt.embs_share_weight,
+        d_k=opt.d_k,
+        d_v=opt.d_v,
         d_model=opt.d_model,
         d_word_vec=opt.d_word_vec,
         d_inner_hid=opt.d_inner_hid,

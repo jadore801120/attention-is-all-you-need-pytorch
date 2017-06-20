@@ -9,13 +9,15 @@ class DataLoader(object):
     ''' For data iteration '''
 
     def __init__(
-            self,
-            src_insts, src_word2idx,
-            tgt_insts, tgt_word2idx,
+            self, src_word2idx, tgt_word2idx,
+            src_insts=None, tgt_insts=None,
             cuda=True, batch_size=64):
 
-        assert len(src_insts) == len(tgt_insts)
+        assert src_insts
         assert len(src_insts) >= batch_size
+
+        if tgt_insts:
+            assert len(src_insts) == len(tgt_insts)
 
         self.cuda = cuda
         self._n_batch = (len(src_insts) // batch_size) - 1
@@ -68,9 +70,12 @@ class DataLoader(object):
 
     def shuffle(self):
         ''' Shuffle data for a brand new start '''
-        paired_insts = list(zip(self._src_insts, self._tgt_insts))
-        random.shuffle(paired_insts)
-        self._src_insts, self._tgt_insts = zip(*paired_insts)
+        if self._tgt_insts:
+            paired_insts = list(zip(self._src_insts, self._tgt_insts))
+            random.shuffle(paired_insts)
+            self._src_insts, self._tgt_insts = zip(*paired_insts)
+        else:
+            random.shuffle(self._src_insts)
 
     def __iter__(self):
         return self
@@ -80,7 +85,6 @@ class DataLoader(object):
 
     def __len__(self):
         return self._n_batch
-
 
     def next(self):
         ''' Get the next batch '''
@@ -113,12 +117,15 @@ class DataLoader(object):
             end_idx = (self._iter_count + 1) * self._batch_size
 
             src_insts = self._src_insts[start_idx:end_idx]
-            tgt_insts = self._tgt_insts[start_idx:end_idx]
-
             src_data, src_pos = pad_to_longest(src_insts)
-            tgt_data, tgt_pos = pad_to_longest(tgt_insts)
 
-            return (src_data, src_pos), (tgt_data, tgt_pos)
+            if not self._tgt_insts:
+                return src_data, src_pos
+            else:
+                tgt_insts = self._tgt_insts[start_idx:end_idx]
+                tgt_data, tgt_pos = pad_to_longest(tgt_insts)
+                return (src_data, src_pos), (tgt_data, tgt_pos)
+
         else:
             self.shuffle()
             self._iter_count = 0
