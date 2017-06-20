@@ -134,8 +134,8 @@ class Transformer(nn.Module):
 
     def __init__(
             self, n_src_vocab, n_tgt_vocab, n_max_seq, n_layers=4, n_head=8,
-            d_word_vec=64, d_model=64, d_inner_hid=200, dropout=0.1,
-            proj_share_weight=True, embs_share_weight=True):
+            d_word_vec=64, d_model=64, d_inner_hid=200, d_k=64, d_v=64,
+            dropout=0.1, proj_share_weight=True, embs_share_weight=True):
 
         super(Transformer, self).__init__()
         self.encoder = Encoder(
