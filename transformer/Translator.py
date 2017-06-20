@@ -1,8 +1,5 @@
-'''
-This module will handle the beam search generation.
-'''
+''' This module will handle the text generation with beam search. '''
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -11,7 +8,7 @@ from transformer.Models import Transformer
 from transformer.Beam import Beam
 
 class Translator(object):
-    ''' Handling translation '''
+    ''' Load with trained model and handle the beam search '''
 
     def __init__(self, opt):
         self.opt = opt
@@ -39,7 +36,7 @@ class Translator(object):
         prob_projection = nn.LogSoftmax()
 
         model.load_state_dict(checkpoint['model'])
-        print('Trained model state loaded.')
+        print('[Info] Trained model state loaded.')
 
         if opt.cuda:
             model.cuda()
@@ -61,20 +58,21 @@ class Translator(object):
         batch_size = src_seq.size(0)
         beam_size = self.opt.beam_size
 
-        # Enocde
+        #- Enocde
         enc_outputs, enc_slf_attns = self.model.encoder(src_seq, src_pos)
 
-        # Preparing for decode
+        #--- Repeat data for beam
         src_seq = Variable(src_seq.data.repeat(beam_size, 1))
-        #enc_outputs = Variable(enc_outputs.data.repeat(beam_size, 1, 1))
         enc_outputs = [
             Variable(enc_output.data.repeat(beam_size, 1, 1))
             for enc_output in enc_outputs]
 
+        #--- Prepare beams
         beam = [Beam(beam_size, self.opt.cuda) for k in range(batch_size)]
         batch_idx = list(range(batch_size))
         n_remaining_sents = batch_size
 
+        #- Decode
         for i in range(self.opt.max_seq_len):
 
             len_dec_seq = i + 1
@@ -103,7 +101,7 @@ class Translator(object):
             dec_output = self.model.tgt_word_proj(dec_output)
             out = self.model.prob_projection(dec_output)
 
-            # batch x beam x numWords
+            # batch x beam x n_words
             word_lk = out.view(n_remaining_sents, beam_size, -1).contiguous()
 
             active = []
@@ -116,23 +114,27 @@ class Translator(object):
                     active += [b]
 
             if not active:
-                break 
+                break
 
             # in this section, the sentences that are still active are
             # compacted so that the decoder is not run on completed sentences
             active_idx = self.tt.LongTensor([batch_idx[k] for k in active])
             batch_idx = {beam: idx for idx, beam in enumerate(active)}
 
-            def update_active_enc_info(tensor_var):
+            def update_active_enc_info(tensor_var, active_idx):
+                ''' Remove the encoder outputs of finished instances in one batch. '''
                 tensor_data = tensor_var.data.view(n_remaining_sents, -1, self.model_opt.d_model)
 
                 new_size = list(tensor_var.size())
                 new_size[0] = new_size[0] * len(active_idx) // n_remaining_sents
 
                 # select the active index in batch
-                return Variable(tensor_data.index_select(0, active_idx).view(*new_size), volatile=True)
+                return Variable(
+                    tensor_data.index_select(0, active_idx).view(*new_size),
+                    volatile=True)
 
-            def update_active_seq(seq):
+            def update_active_seq(seq, active_idx):
+                ''' Remove the src sequence of finished instances in one batch. '''
                 view = seq.data.view(n_remaining_sents, -1)
                 new_size = list(seq.size())
                 new_size[0] = new_size[0] * len(active_idx) // n_remaining_sents # trim on batch dim
@@ -140,12 +142,14 @@ class Translator(object):
                 # select the active index in batch
                 return Variable(view.index_select(0, active_idx).view(*new_size), volatile=True)
 
-            enc_outputs = [update_active_enc_info(enc_output) for enc_output in enc_outputs]
-            src_seq = update_active_seq(src_seq)
+            src_seq = update_active_seq(src_seq, active_idx)
+            enc_outputs = [
+                update_active_enc_info(enc_output, active_idx)
+                for enc_output in enc_outputs]
             n_remaining_sents = len(active)
 
-        #  (4) package everything up
-        all_hyp, all_scores, gold_scores = [], [], []
+        #- Return useful information
+        all_hyp, all_scores = [], []
         n_best = self.opt.n_best
 
         for b in range(batch_size):
@@ -154,4 +158,4 @@ class Translator(object):
             hyps = [beam[b].get_hypothesis(k) for k in ks[:n_best]]
             all_hyp += [hyps]
 
-        return all_hyp, all_scores, gold_scores
+        return all_hyp, all_scores
