@@ -30,7 +30,6 @@ def get_performance(crit, pred, gold, smoothing=False, num_class=None):
 
     return loss, n_correct
 
-
 def train_epoch(model, training_data, crit, optimizer):
     ''' Epoch operation in training phase'''
 
@@ -176,7 +175,7 @@ def main():
 
     #========= Loading Dataset =========#
     data = torch.load(opt.data)
-    opt.max_seq_len = data['settings'].max_seq_len
+    opt.max_token_seq_len = data['settings'].max_token_seq_len
 
     #========= Preparing DataLoader =========#
     training_data = DataLoader(
@@ -206,7 +205,7 @@ def main():
     transformer = Transformer(
         opt.src_vocab_size,
         opt.tgt_vocab_size,
-        opt.max_seq_len,
+        opt.max_token_seq_len,
         proj_share_weight=opt.proj_share_weight,
         embs_share_weight=opt.embs_share_weight,
         d_k=opt.d_k,
