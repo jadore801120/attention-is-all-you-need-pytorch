@@ -38,7 +38,7 @@ python preprocess.py -train_src train.src.txt -train_tgt train.tgt.txt -valid_sr
 
 ## 1) Training
 ```bash
-python train.py -data data.pt -save trained.chkpt -save_mode best -embs_share_weight -proj_share_weight 
+python train.py -data data.pt -save trained -save_mode best -embs_share_weight -proj_share_weight 
 ```
 
 ## 2) Testing

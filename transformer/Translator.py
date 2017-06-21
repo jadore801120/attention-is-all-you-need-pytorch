@@ -21,7 +21,7 @@ class Translator(object):
         model = Transformer(
             model_opt.src_vocab_size,
             model_opt.tgt_vocab_size,
-            model_opt.max_seq_len,
+            model_opt.max_token_seq_len,
             proj_share_weight=model_opt.proj_share_weight,
             embs_share_weight=model_opt.embs_share_weight,
             d_k=model_opt.d_k,
@@ -73,7 +73,7 @@ class Translator(object):
         n_remaining_sents = batch_size
 
         #- Decode
-        for i in range(self.opt.max_seq_len):
+        for i in range(self.model_opt.max_token_seq_len):
 
             len_dec_seq = i + 1
 

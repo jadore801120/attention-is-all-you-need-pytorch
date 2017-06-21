@@ -25,8 +25,6 @@ def main():
                         help='Beam size')
     parser.add_argument('-batch_size', type=int, default=30,
                         help='Batch size')
-    parser.add_argument('-max_seq_len', type=int, default=20,
-                        help='Maximum sentence length.')
     parser.add_argument('-n_best', type=int, default=1,
                         help="""If verbose is set, will output the n_best
                         decoded sentences""")
@@ -36,14 +34,17 @@ def main():
     opt.cuda = not opt.no_cuda
 
     # Prepare DataLoader
-    predefined_data = torch.load(opt.vocab)
+    preprocess_data = torch.load(opt.vocab)
+    preprocess_settings = preprocess_data['settings']
     test_src_word_insts = read_instances_from_file(
-        opt.src, opt.max_seq_len, predefined_data['settings'].keep_case)
+        opt.src,
+        preprocess_settings.max_word_seq_len,
+        preprocess_settings.keep_case)
     test_src_insts = convert_instance_to_idx_seq(
-        test_src_word_insts, predefined_data['dict']['src'])
+        test_src_word_insts, preprocess_data['dict']['src'])
     test_data = DataLoader(
-        predefined_data['dict']['src'],
-        predefined_data['dict']['tgt'],
+        preprocess_data['dict']['src'],
+        preprocess_data['dict']['tgt'],
         src_insts=test_src_insts,
         batch_size=opt.batch_size)
 

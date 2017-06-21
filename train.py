@@ -130,12 +130,12 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
             'settings': opt,
             'epoch': epoch_i}
 
-        if opt.save:
+        if opt.save_model:
             if opt.save_mode == 'all':
-                model_name = opt.save + '_accu_{accu:3.3}.chkpt'.format(accu=100*valid_accu)
+                model_name = opt.save_model + '_accu_{accu:3.3}.chkpt'.format(accu=100*valid_accu)
                 torch.save(checkpoint, model_name)
             elif opt.save_mode == 'best':
-                model_name = opt.save + '.chkpt'
+                model_name = opt.save_model + '.chkpt'
                 if valid_accu >= max(valid_accus):
                     torch.save(checkpoint, model_name)
                     print('    - [Info] The checkpoint file has been updated.')
@@ -165,7 +165,7 @@ def main():
     parser.add_argument('-proj_share_weight', action='store_true')
 
     parser.add_argument('-log', default=None)
-    parser.add_argument('-save', default=None)
+    parser.add_argument('-save_model', default=None)
     parser.add_argument('-save_mode', type=str, choices=['all', 'best'], default='best')
 
     parser.add_argument('-no_cuda', action='store_true')
