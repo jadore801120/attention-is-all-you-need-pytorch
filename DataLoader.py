@@ -39,6 +39,11 @@ class DataLoader(object):
         self.shuffle()
 
     @property
+    def n_insts(self):
+        ''' Property for dataset size '''
+        return len(self._src_insts)
+
+    @property
     def src_vocab_size(self):
         ''' Property for vocab size '''
         return len(self._src_word2idx)

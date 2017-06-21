@@ -194,6 +194,9 @@ def main():
         batch_size=opt.batch_size,
         cuda=opt.cuda)
 
+    print('[Info] number of training instances =', training_data.n_insts)
+    print('[Info] number of validation instances =', validation_data.n_insts)
+
     opt.src_vocab_size = training_data.src_vocab_size
     opt.tgt_vocab_size = training_data.tgt_vocab_size
 
