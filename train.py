@@ -150,11 +150,11 @@ def main():
     parser.add_argument('-epoch', type=int, default=10)
     parser.add_argument('-batch_size', type=int, default=64)
 
-    parser.add_argument('-d_word_vec', default=512)
-    parser.add_argument('-d_model', default=512)
-    parser.add_argument('-d_inner_hid', default=1024)
-    parser.add_argument('-d_k', default=64)
-    parser.add_argument('-d_v', default=64)
+    parser.add_argument('-d_word_vec', type=int, default=512)
+    parser.add_argument('-d_model', type=int, default=512)
+    parser.add_argument('-d_inner_hid', type=int, default=1024)
+    parser.add_argument('-d_k', type=int, default=64)
+    parser.add_argument('-d_v', type=int, default=64)
 
     parser.add_argument('-n_head', type=int, default=8)
     parser.add_argument('-n_layers', type=int, default=4)
