@@ -77,6 +77,7 @@ def eval_epoch(model, validation_data, crit):
             validation_data, mininterval=2,
             desc='  - (Validation) ', leave=False):
 
+
         # prepare data
         src, tgt = batch
         gold = tgt[0][:, 1:]
@@ -113,9 +114,11 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         print('[ Epoch', epoch_i, ']')
 
         update_learning_rate(epoch_i)
+        '''
         train_loss, train_accu = train_epoch(model, training_data, crit, optimizer)
         print('  - (Training)   loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
             loss=train_loss, accu=100*train_accu))
+        '''
 
         valid_loss, valid_accu = eval_epoch(model, validation_data, crit)
         print('  - (Validation) loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
@@ -193,9 +196,6 @@ def main():
         tgt_insts=data['valid']['tgt'],
         batch_size=opt.batch_size,
         cuda=opt.cuda)
-
-    print('[Info] Number of training instances   =', training_data.n_insts)
-    print('[Info] Number of validation instances =', validation_data.n_insts)
 
     opt.src_vocab_size = training_data.src_vocab_size
     opt.tgt_vocab_size = training_data.tgt_vocab_size
