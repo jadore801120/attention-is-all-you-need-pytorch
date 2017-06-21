@@ -7,15 +7,23 @@ def read_instances_from_file(inst_file, max_sent_len, keep_case):
     ''' Convert file into word seq lists and vocab '''
 
     word_insts = []
+    trimmed_sent_count = 0
     with open(inst_file) as f:
-        for i, sent in enumerate(f):
+        for sent in f:
             if not keep_case:
                 sent = sent.lower()
             words = sent.split()
+            if len(words) > max_sent_len:
+                trimmed_sent_count += 1
             word_inst = words[:max_sent_len]
             word_insts += [[Constants.BOS_WORD] + word_inst + [Constants.EOS_WORD]]
 
     print('[Info] Get {} instances from {}'.format(len(word_insts), inst_file))
+
+    if trimmed_sent_count > 0:
+        print('[Warning] {} instances are trimmed to the max sentence length {}.'
+              .format(trimmed_sent_count, max_sent_len))
+
     return word_insts
 
 def build_vocab_idx(word_insts, min_word_count):
@@ -62,7 +70,7 @@ def main():
     parser.add_argument('-valid_src', required=True)
     parser.add_argument('-valid_tgt', required=True)
     parser.add_argument('-output', required=True)
-    parser.add_argument('-max_len', '--max_word_seq_len', type=int, default=20)
+    parser.add_argument('-max_len', '--max_word_seq_len', type=int, default=50)
     parser.add_argument('-min_word_count', type=int, default=5)
     parser.add_argument('-keep_case', action='store_true')
     parser.add_argument('-share_vocab', action='store_true')
