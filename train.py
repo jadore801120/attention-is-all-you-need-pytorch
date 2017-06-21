@@ -114,11 +114,10 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         print('[ Epoch', epoch_i, ']')
 
         update_learning_rate(epoch_i)
-        '''
+
         train_loss, train_accu = train_epoch(model, training_data, crit, optimizer)
         print('  - (Training)   loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
             loss=train_loss, accu=100*train_accu))
-        '''
 
         valid_loss, valid_accu = eval_epoch(model, validation_data, crit)
         print('  - (Validation) loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
