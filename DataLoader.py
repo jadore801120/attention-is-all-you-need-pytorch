@@ -82,6 +82,7 @@ class DataLoader(object):
         else:
             random.shuffle(self._src_insts)
 
+
     def __iter__(self):
         return self
 
