@@ -50,6 +50,7 @@ def train_epoch(model, training_data, crit, optimizer):
         # forward
         optimizer.zero_grad()
         pred = model(src, tgt)
+
         loss, n_correct = get_performance(crit, pred, gold)
 
         # backward
@@ -125,7 +126,6 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
 
         valid_accus += [valid_accu]
 
-        #model_state_dict = (model.module.state_dict() if opt.cuda else model.state_dict())
         model_state_dict = model.state_dict()
         checkpoint = {
             'model': model_state_dict,

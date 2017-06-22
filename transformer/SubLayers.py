@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 from transformer.Modules import Linear, ScaledDotProductAttention, LayerNormalization
 
 __author__ = "Yu-Hsiang Huang"
@@ -12,35 +13,52 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, n_head, d_model, d_k, d_v, dropout=0.1):
         super(MultiHeadAttention, self).__init__()
 
-        self.w_qs = nn.ModuleList([
-            Linear(d_model, d_k, bias=False) for _ in range(n_head)])
-        self.w_ks = nn.ModuleList([
-            Linear(d_model, d_k, bias=False) for _ in range(n_head)])
-        self.w_vs = nn.ModuleList([
-            Linear(d_model, d_v, bias=False) for _ in range(n_head)])
+        self.n_head = n_head
+        self.d_k = d_k
+        self.d_v = d_v
+
+        self.w_qs = nn.Parameter(torch.FloatTensor(n_head, d_model, d_k))
+        self.w_ks = nn.Parameter(torch.FloatTensor(n_head, d_model, d_k))
+        self.w_vs = nn.Parameter(torch.FloatTensor(n_head, d_model, d_v))
 
         self.attention = ScaledDotProductAttention(d_model)
         self.layer_norm = LayerNormalization(d_model)
         self.proj = Linear(n_head*d_v, d_model)
+
         self.dropout = nn.Dropout(dropout)
 
+        init.xavier_normal(self.w_qs)
+        init.xavier_normal(self.w_ks)
+        init.xavier_normal(self.w_vs)
+
     def forward(self, q, k, v, attn_mask=None):
+
+        d_k, d_v = self.d_k, self.d_v
+        n_head = self.n_head
+
         residual = q
 
-        outputs, attns = [], []
         mb_size, len_q, d_model = q.size()
         mb_size, len_k, d_model = k.size()
         mb_size, len_v, d_model = v.size()
 
-        for w_qi, w_ki, w_vi in zip(self.w_qs, self.w_ks, self.w_vs):
-            q_i = w_qi(q.view(-1, d_model)).view((mb_size, len_q, -1))
-            k_i = w_ki(k.view(-1, d_model)).view((mb_size, len_k, -1))
-            v_i = w_vi(v.view(-1, d_model)).view((mb_size, len_v, -1))
-            output, attn = self.attention(q_i, k_i, v_i, attn_mask=attn_mask)
-            outputs += [output]
-            attns += [attn]
+        # treat as a (n_head) size batch
+        q_s = q.repeat(n_head, 1, 1).view(n_head, -1, d_model) # n_head x (mb_size*len_q) x d_model
+        k_s = k.repeat(n_head, 1, 1).view(n_head, -1, d_model) # n_head x (mb_size*len_k) x d_model
+        v_s = v.repeat(n_head, 1, 1).view(n_head, -1, d_model) # n_head x (mb_size*len_v) x d_model
 
-        outputs = torch.cat(outputs, 2)
+        # treat the result as a (n_head * mb_size) size batch
+        q_s = torch.bmm(q_s, self.w_qs).view(-1, len_q, d_k)   # (n_head*mb_size) x len_q x d_k
+        k_s = torch.bmm(k_s, self.w_ks).view(-1, len_k, d_k)   # (n_head*mb_size) x len_k x d_k
+        v_s = torch.bmm(v_s, self.w_vs).view(-1, len_v, d_v)   # (n_head*mb_size) x len_v x d_v
+
+        # perform attention, result size = (n_head * mb_size) x len_q x d_v
+        outputs, attns = self.attention(q_s, k_s, v_s, attn_mask=attn_mask.repeat(n_head, 1, 1))
+
+        # back to original mb_size batch
+        outputs = outputs.view(mb_size, len_q, -1)            # mb_size x len_q x (n_head*d_v)
+
+        # project back to residual size
         outputs = self.proj(outputs.view(-1, outputs.size(2))).view_as(residual)
         outputs = self.dropout(outputs)
 
