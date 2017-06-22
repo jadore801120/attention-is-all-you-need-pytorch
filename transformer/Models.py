@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import transformer.Constants as Constants
-from transformer.Modules import Linear
+from transformer.Modules import BottleLinear as Linear
 from transformer.Layers import EncoderLayer, DecoderLayer
 
 __author__ = "Yu-Hsiang Huang"
@@ -96,7 +96,6 @@ class Decoder(nn.Module):
 
         self.tgt_word_emb = nn.Embedding(
             n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
-        self.tgt_word_proj = Linear(d_model, n_tgt_vocab, bias=False)
         self.dropout = nn.Dropout(dropout)
 
         self.layer_stack = nn.ModuleList([
@@ -181,6 +180,7 @@ class Transformer(nn.Module):
         dec_outputs, dec_slf_attns, dec_enc_attns = self.decoder(
             tgt_seq, tgt_pos, src_seq, enc_outputs)
         dec_output = dec_outputs[-1]
-        seq_logit = self.tgt_word_proj(dec_output.view(-1, dec_output.size(2)))
 
-        return seq_logit
+        seq_logit = self.tgt_word_proj(dec_output)
+
+        return seq_logit.view(-1, seq_logit.size(2))
