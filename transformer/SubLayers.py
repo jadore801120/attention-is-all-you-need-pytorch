@@ -60,7 +60,6 @@ class MultiHeadAttention(nn.Module):
         outputs = outputs.view(mb_size, len_q, -1)            # mb_size x len_q x (n_head*d_v)
 
         # project back to residual size
-        #outputs = self.proj(outputs.view(-1, outputs.size(2))).view_as(residual)
         outputs = self.proj(outputs)
         outputs = self.dropout(outputs)
 
