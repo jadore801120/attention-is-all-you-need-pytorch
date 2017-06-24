@@ -10,7 +10,9 @@ import torch.nn as nn
 import torch.optim as optim
 import transformer.Constants as Constants
 from transformer.Models import Transformer
+from transformer.Optim import ScheduledOptim
 from DataLoader import DataLoader
+
 
 def get_performance(crit, pred, gold, smoothing=False, num_class=None):
     ''' Apply label smoothing if needed '''
@@ -57,14 +59,15 @@ def train_epoch(model, training_data, crit, optimizer):
 
         # update parameters
         optimizer.step()
+        optimizer.update_learning_rate()
 
         # note keeping
         n_words = gold.data.ne(Constants.PAD).sum()
         n_total_words += n_words
         n_total_correct += n_correct
-        total_loss += loss.data[0] / len(training_data)
+        total_loss += loss.data[0]
 
-    return total_loss, n_total_correct/n_total_words
+    return total_loss/n_total_words, n_total_correct/n_total_words
 
 def eval_epoch(model, validation_data, crit):
     ''' Epoch operation in evaluation phase '''
@@ -91,30 +94,17 @@ def eval_epoch(model, validation_data, crit):
         n_words = gold.data.ne(Constants.PAD).sum()
         n_total_words += n_words
         n_total_correct += n_correct
-        total_loss += loss.data[0] / len(validation_data)
+        total_loss += loss.data[0]
 
-    return total_loss, n_total_correct/n_total_words
+    return total_loss/n_total_words, n_total_correct/n_total_words
 
 
 def train(model, training_data, validation_data, crit, optimizer, opt):
     ''' Start training '''
 
-    def update_learning_rate(n_steps):
-        ''' Learning rate scheduling '''
-
-        n_steps += 1
-        new_lr = np.power(opt.d_model, -0.5) * np.min([
-            np.power(n_steps, -0.5),
-            np.power(opt.n_warmup_steps, -1.5) * n_steps])
-
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = new_lr
-
     valid_accus = []
     for epoch_i in range(opt.epoch):
         print('[ Epoch', epoch_i, ']')
-
-        update_learning_rate(epoch_i)
 
         train_loss, train_accu = train_epoch(model, training_data, crit, optimizer)
         print('  - (Training)   loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
@@ -222,9 +212,12 @@ def main():
 
     #print(transformer)
 
-    optimizer = optim.Adam(
-        transformer.get_trainable_parameters(),
-        betas=(0.9, 0.98), eps=1e-09)
+    optimizer = ScheduledOptim(
+            optim.Adam(
+                transformer.get_trainable_parameters(),
+                betas=(0.9, 0.98), eps=1e-09),
+            opt.d_model, opt.n_warmup_steps)
+
 
     def get_criterion(vocab_size):
         ''' With PAD token zero weight '''
