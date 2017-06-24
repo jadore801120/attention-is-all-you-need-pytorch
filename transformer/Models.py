@@ -23,8 +23,8 @@ def position_encoding_init(n_position, d_pos_vec):
 def get_attn_padding_mask(seq_q, seq_k):
     ''' Indicate the padding-related part to mask '''
     assert seq_q.dim() == 2 and seq_k.dim() == 2
-    mb_size, len_k = seq_k.size()
     mb_size, len_q = seq_q.size()
+    mb_size, len_k = seq_k.size()
     pad_attn_mask = seq_k.data.eq(Constants.PAD).unsqueeze(1)   # bx1xsk
     pad_attn_mask = pad_attn_mask.expand(mb_size, len_q, len_k) # bxsqxsk
     return pad_attn_mask
@@ -116,7 +116,7 @@ class Decoder(nn.Module):
         dec_slf_attn_sub_mask = get_attn_subsequent_mask(tgt_seq)
         dec_slf_attn_mask = torch.gt(dec_slf_attn_pad_mask + dec_slf_attn_sub_mask, 0)
 
-        dec_enc_attn_pad_mask = get_attn_padding_mask(src_seq, tgt_seq)
+        dec_enc_attn_pad_mask = get_attn_padding_mask(tgt_seq, src_seq)
 
         dec_output = dec_input
         for dec_layer, enc_output in zip(self.layer_stack, enc_outputs):
