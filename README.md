@@ -54,3 +54,4 @@ python translate.py -model trained.chkpt -vocab data.pt -src test.src.txt
 ---
 # Acknowledgement
 - The project structure and some scripts are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
+- Thanks for the suggestions from @srush and @iamalbert.
