@@ -43,8 +43,8 @@ class Encoder(nn.Module):
     ''' A encoder model with self attention mechanism. '''
 
     def __init__(
-            self, n_src_vocab, n_max_seq, n_layers=4, n_head=8, d_k=64, d_v=64,
-            d_word_vec=64, d_model=64, d_inner_hid=200, dropout=0.1):
+            self, n_src_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
+            d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
 
         super(Encoder, self).__init__()
 
@@ -82,8 +82,8 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
     def __init__(
-            self, n_tgt_vocab, n_max_seq, n_layers=4, n_head=8, d_k=64, d_v=64,
-            d_word_vec=64, d_model=64, d_inner_hid=200, dropout=0.1):
+            self, n_tgt_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
+            d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
 
         super(Decoder, self).__init__()
         n_position = n_max_seq + 1
@@ -134,8 +134,8 @@ class Transformer(nn.Module):
     ''' A sequence to sequence model with attention mechanism. '''
 
     def __init__(
-            self, n_src_vocab, n_tgt_vocab, n_max_seq, n_layers=4, n_head=8,
-            d_word_vec=64, d_model=64, d_inner_hid=200, d_k=64, d_v=64,
+            self, n_src_vocab, n_tgt_vocab, n_max_seq, n_layers=6, n_head=8,
+            d_word_vec=512, d_model=512, d_inner_hid=1024, d_k=64, d_v=64,
             dropout=0.1, proj_share_weight=True, embs_share_weight=True):
 
         super(Transformer, self).__init__()
