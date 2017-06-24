@@ -51,10 +51,11 @@ def train_epoch(model, training_data, crit, optimizer):
         optimizer.zero_grad()
         pred = model(src, tgt)
 
-        loss, n_correct = get_performance(crit, pred, gold)
-
         # backward
+        loss, n_correct = get_performance(crit, pred, gold)
         loss.backward()
+
+        # update parameters
         optimizer.step()
 
         # note keeping
@@ -77,7 +78,6 @@ def eval_epoch(model, validation_data, crit):
     for batch in tqdm(
             validation_data, mininterval=2,
             desc='  - (Validation) ', leave=False):
-
 
         # prepare data
         src, tgt = batch
@@ -142,7 +142,6 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
                     torch.save(checkpoint, model_name)
                     print('    - [Info] The checkpoint file has been updated.')
 
-
 def main():
     ''' Main function '''
     parser = argparse.ArgumentParser()
@@ -203,6 +202,8 @@ def main():
     if opt.embs_share_weight and training_data.src_word2idx != training_data.tgt_word2idx:
         print('[Warning]',
               'The src/tgt word2idx table are different but asked to share word embedding.')
+
+    print(opt)
 
     transformer = Transformer(
         opt.src_vocab_size,
