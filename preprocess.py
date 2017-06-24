@@ -73,7 +73,7 @@ def main():
     parser.add_argument('-train_tgt', required=True)
     parser.add_argument('-valid_src', required=True)
     parser.add_argument('-valid_tgt', required=True)
-    parser.add_argument('-output', required=True)
+    parser.add_argument('-save_data', required=True)
     parser.add_argument('-max_len', '--max_word_seq_len', type=int, default=50)
     parser.add_argument('-min_word_count', type=int, default=5)
     parser.add_argument('-keep_case', action='store_true')
@@ -156,8 +156,8 @@ def main():
             'src': valid_src_insts,
             'tgt': valid_tgt_insts}}
 
-    print('[Info] Dumping the processed data to pickle file', opt.output)
-    torch.save(data, opt.output)
+    print('[Info] Dumping the processed data to pickle file', opt.save_data)
+    torch.save(data, opt.save_data)
     print('[Info] Finish.')
 
 if __name__ == '__main__':

@@ -31,19 +31,47 @@ If there is any suggestion or error, feel free to fire an issue to let me know. 
 
 # Usage
 
-## 0) Prepare the data
+## Some useful tools:
+
+The example below uses the Moses tokenizer (http://www.statmt.org/moses/) to prepare the data and the moses BLEU script for evaluation.
+
 ```bash
-python preprocess.py -train_src train.src.txt -train_tgt train.tgt.txt -valid_src valid.src.txt -valid_tgt valid.tgt.txt -output data.pt
+wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/tokenizer/tokenizer.perl
+wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.de
+wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.en
+sed -i "s/$RealBin\/..\/share\/nonbreaking_prefixes//" tokenizer.perl
+wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/generic/multi-bleu.perl
 ```
 
-## 1) Training
+## WMT'16 Multimodal Translation: Multi30k (de-en)
+
+An example of training for the WMT'16 Multimodal Translation task (http://www.statmt.org/wmt16/multimodal-task.html).
+
+### 0) Download the data.
+
 ```bash
-python train.py -data data.pt -save_model trained -save_mode best -embs_share_weight -proj_share_weight 
+mkdir -p data/multi30k
+wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/training.tar.gz &&  tar -xf training.tar.gz -C data/multi30k && rm training.tar.gz
+wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/validation.tar.gz && tar -xf validation.tar.gz -C data/multi30k && rm validation.tar.gz
+wget https://staff.fnwi.uva.nl/d.elliott/wmt16/mmt16_task1_test.tgz && tar -xf mmt16_task1_test.tgz -C data/multi30k && rm mmt16_task1_test.tgz
 ```
 
-## 2) Testing
+### 1) Preprocess the data.
 ```bash
-python translate.py -model trained.chkpt -vocab data.pt -src test.src.txt
+for l in en de; do for f in data/multi30k/*.$l; do if [[ "$f" != *"test"* ]]; then sed -i "$ d" $f; fi;  done; done
+for l in en de; do for f in data/multi30k/*.$l; do perl tokenizer.perl -a -no-escape -l $l -q  < $f > $f.atok; done; done
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low.pt
+```
+
+### 2) Train the model
+```bash
+python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode best -proj_share_weight 
+```
+> If your source and target language share one common vocabulary, use the `-embs_share_weight` flag to enable the model to share source/target word embedding. 
+
+### 3) Test the model
+```bash
+python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src test.src.txt
 ```
 
 ---
@@ -53,5 +81,5 @@ python translate.py -model trained.chkpt -vocab data.pt -src test.src.txt
   - Attention weight plot.
 ---
 # Acknowledgement
-- The project structure and some scripts are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py)
+- The project structure, some scripts and the dataset preprocessing steps are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py).
 - Thanks for the suggestions from @srush and @iamalbert.
