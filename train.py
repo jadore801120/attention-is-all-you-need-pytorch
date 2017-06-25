@@ -112,8 +112,8 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
             log_train_file, log_valid_file))
 
         with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
-            log_tf.write('epoch, loss, accuracy\n')
-            log_vf.write('epoch, loss, accuracy\n')
+            log_tf.write('epoch,loss,accuracy\n')
+            log_vf.write('epoch,loss,accuracy\n')
 
     valid_accus = []
     for epoch_i in range(opt.epoch):
@@ -146,7 +146,7 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
                     print('    - [Info] The checkpoint file has been updated.')
 
         if log_train_file and log_valid_file:
-            with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
+            with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
                 log_tf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
                     epoch=epoch_i, loss=train_loss, accu=100*train_accu))
                 log_vf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
