@@ -101,6 +101,20 @@ def eval_epoch(model, validation_data, crit):
 def train(model, training_data, validation_data, crit, optimizer, opt):
     ''' Start training '''
 
+    log_train_file = None
+    log_valid_file = None
+
+    if opt.log:
+        log_train_file = opt.log + '.train.log'
+        log_valid_file = opt.log + '.valid.log'
+
+        print('Training performance will be written to file: {} and {}'.format(
+            log_train_file, log_valid_file))
+
+        with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
+            log_tf.write('epoch, loss, accuracy\n')
+            log_vf.write('epoch, loss, accuracy\n')
+
     valid_accus = []
     for epoch_i in range(opt.epoch):
         print('[ Epoch', epoch_i, ']')
@@ -130,6 +144,13 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
                 if valid_accu >= max(valid_accus):
                     torch.save(checkpoint, model_name)
                     print('    - [Info] The checkpoint file has been updated.')
+
+        if log_train_file and log_valid_file:
+            with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
+                log_tf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
+                    epoch=epoch_i, loss=train_loss, accu=100*train_accu))
+                log_vf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
+                    epoch=epoch_i, loss=valid_loss, accu=100*valid_accu))
 
 def main():
     ''' Main function '''
@@ -212,10 +233,10 @@ def main():
     #print(transformer)
 
     optimizer = ScheduledOptim(
-            optim.Adam(
-                transformer.get_trainable_parameters(),
-                betas=(0.9, 0.98), eps=1e-09),
-            opt.d_model, opt.n_warmup_steps)
+        optim.Adam(
+            transformer.get_trainable_parameters(),
+            betas=(0.9, 0.98), eps=1e-09),
+        opt.d_model, opt.n_warmup_steps)
 
 
     def get_criterion(vocab_size):
