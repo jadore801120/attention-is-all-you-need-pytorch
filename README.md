@@ -73,7 +73,20 @@ python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode b
 ```bash
 python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src test.src.txt
 ```
+---
+# Performance
+## Training
 
+<p align="center">
+<img src="http://imgur.com/blMPovT.png" width="400">
+<img src="http://imgur.com/jMAUGYn.png" width="400">
+</p>
+
+> Parameter settings:
+>> batch_size=64, d_inner_hid=1024, d_k=64, d_model=512, d_v=64, d_word_vec=512, dropout=0.1, embs_share_weight=False, n_head=8, n_layers=6, n_warmup_steps=4000, proj_share_weight=True
+
+## Testing 
+- coming soon.
 ---
 # TODO
   - Label smoothing
