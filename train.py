@@ -108,7 +108,7 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         log_train_file = opt.log + '.train.log'
         log_valid_file = opt.log + '.valid.log'
 
-        print('Training performance will be written to file: {} and {}'.format(
+        print('[Info] Training performance will be written to file: {} and {}'.format(
             log_train_file, log_valid_file))
 
         with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
