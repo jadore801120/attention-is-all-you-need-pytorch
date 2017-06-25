@@ -3,7 +3,9 @@ This script handling the training process.
 '''
 
 import argparse
-import numpy as np
+import math
+import time
+
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -16,7 +18,7 @@ from DataLoader import DataLoader
 def get_performance(crit, pred, gold, smoothing=False, num_class=None):
     ''' Apply label smoothing if needed '''
 
-    # TODO: Add smoothing and PPL
+    # TODO: Add smoothing
     if smoothing:
         assert bool(num_class)
         eps = 0.1
@@ -97,7 +99,6 @@ def eval_epoch(model, validation_data, crit):
 
     return total_loss/n_total_words, n_total_correct/n_total_words
 
-
 def train(model, training_data, validation_data, crit, optimizer, opt):
     ''' Start training '''
 
@@ -112,20 +113,26 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
             log_train_file, log_valid_file))
 
         with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
-            log_tf.write('epoch,loss,accuracy\n')
-            log_vf.write('epoch,loss,accuracy\n')
+            log_tf.write('epoch,loss,ppl,accuracy\n')
+            log_vf.write('epoch,loss,ppl,accuracy\n')
 
     valid_accus = []
     for epoch_i in range(opt.epoch):
         print('[ Epoch', epoch_i, ']')
 
+        start = time.time()
         train_loss, train_accu = train_epoch(model, training_data, crit, optimizer)
-        print('  - (Training)   loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
-            loss=train_loss, accu=100*train_accu))
+        print('  - (Training)   ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
+              'elapse: {elapse:3.3f} min'.format(
+                  ppl=math.exp(min(train_loss, 100)), accu=100*train_accu,
+                  elapse=(time.time()-start)/60))
 
+        start = time.time()
         valid_loss, valid_accu = eval_epoch(model, validation_data, crit)
-        print('  - (Validation) loss: {loss: 8.5f}, accuracy: {accu:3.3} %'.format(
-            loss=valid_loss, accu=100*valid_accu))
+        print('  - (Validation) ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
+                'elapse: {elapse:3.3f} min'.format(
+                    ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu,
+                    elapse=(time.time()-start)/60))
 
         valid_accus += [valid_accu]
 
@@ -137,7 +144,7 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
 
         if opt.save_model:
             if opt.save_mode == 'all':
-                model_name = opt.save_model + '_accu_{accu:3.3}.chkpt'.format(accu=100*valid_accu)
+                model_name = opt.save_model + '_accu_{accu:3.3f}.chkpt'.format(accu=100*valid_accu)
                 torch.save(checkpoint, model_name)
             elif opt.save_mode == 'best':
                 model_name = opt.save_model + '.chkpt'
@@ -147,10 +154,12 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
 
         if log_train_file and log_valid_file:
             with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
-                log_tf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
-                    epoch=epoch_i, loss=train_loss, accu=100*train_accu))
-                log_vf.write('{epoch}, {loss: 8.5f}, {accu:3.3}\n'.format(
-                    epoch=epoch_i, loss=valid_loss, accu=100*valid_accu))
+                log_tf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
+                    epoch=epoch_i, loss=train_loss,
+                    ppl=math.exp(min(train_loss, 100)), accu=100*train_accu))
+                log_vf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
+                    epoch=epoch_i, loss=valid_loss,
+                    ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu))
 
 def main():
     ''' Main function '''
