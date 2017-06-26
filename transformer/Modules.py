@@ -54,6 +54,10 @@ class LayerNormalization(nn.Module):
 
         return ln_out
 
+class BottleLayerNormalization(Bottle, LayerNormalization):
+    ''' Perform the reshape routine before and after a layer normalization'''
+    pass
+
 class ScaledDotProductAttention(nn.Module):
     ''' Scaled Dot-Product Attention '''
 
