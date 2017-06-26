@@ -50,8 +50,8 @@ class Beam(object):
 
         flat_beam_lk = beam_lk.view(-1)
 
-        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # sort
-        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # sort again
+        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # 1st sort
+        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # 2nd sort
 
         self.all_scores.append(self.scores)
         self.scores = best_scores
