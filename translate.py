@@ -46,6 +46,7 @@ def main():
         preprocess_data['dict']['src'],
         preprocess_data['dict']['tgt'],
         src_insts=test_src_insts,
+        cuda=opt.cuda,
         batch_size=opt.batch_size)
 
     translator = Translator(opt)

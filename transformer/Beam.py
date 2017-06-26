@@ -32,7 +32,6 @@ class Beam(object):
 
     def get_current_state(self):
         "Get the outputs for the current timestep."
-        #return self.next_ys[-1]
         return self.get_tentative_hypothesis()
 
     def get_current_origin(self):
@@ -51,7 +50,9 @@ class Beam(object):
 
         flat_beam_lk = beam_lk.view(-1)
 
-        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True)
+        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # sort
+        best_scores, best_scores_id = flat_beam_lk.topk(self.size, 0, True, True) # sort again
+
         self.all_scores.append(self.scores)
         self.scores = best_scores
 
