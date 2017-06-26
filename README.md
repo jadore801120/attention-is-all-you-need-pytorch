@@ -71,7 +71,7 @@ python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode b
 
 ### 3) Test the model
 ```bash
-python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src test.src.txt
+python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok
 ```
 ---
 # Performance
