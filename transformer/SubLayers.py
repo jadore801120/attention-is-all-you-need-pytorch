@@ -58,8 +58,8 @@ class MultiHeadAttention(nn.Module):
         # perform attention, result size = (n_head * mb_size) x len_q x d_v
         outputs, attns = self.attention(q_s, k_s, v_s, attn_mask=attn_mask.repeat(n_head, 1, 1))
 
-        # back to original mb_size batch
-        outputs = outputs.view(mb_size, len_q, -1)            # mb_size x len_q x (n_head*d_v)
+        # back to original mb_size batch, result size = mb_size x len_q x (n_head*d_v)
+        outputs = torch.cat(torch.split(outputs, mb_size, dim=0), dim=-1) 
 
         # project back to residual size
         outputs = self.proj(outputs)
