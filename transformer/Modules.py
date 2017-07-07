@@ -49,7 +49,7 @@ class LayerNormalization(nn.Module):
 
         mu = torch.mean(z, dim=1)
         sigma = torch.std(z, dim=1)
-        ln_out = (z - mu.expand_as(z)) / (sigma.expand_as(z) + self.eps)
+        ln_out = (z - mu..unsqueeze(dim=1).expand_as(z)) / (sigma.unsqueeze(dim=1)..expand_as(z) + self.eps)
         ln_out = ln_out * self.a_2.expand_as(ln_out) + self.b_2.expand_as(ln_out)
 
         return ln_out
