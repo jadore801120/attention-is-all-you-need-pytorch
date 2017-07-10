@@ -8,11 +8,7 @@ import transformer.Constants as Constants
 class DataLoader(object):
     ''' For data iteration '''
 
-    def __init__(
-            self, src_word2idx, tgt_word2idx,
-            src_insts=None, tgt_insts=None,
-            cuda=True, batch_size=64):
-
+    def __init__(self, src_word2idx, tgt_word2idx, src_insts=None, tgt_insts=None, cuda=True, batch_size=64, drop_last=False, mode='train'):
         assert src_insts
         assert len(src_insts) >= batch_size
 
@@ -20,7 +16,15 @@ class DataLoader(object):
             assert len(src_insts) == len(tgt_insts)
 
         self.cuda = cuda
-        self._n_batch = (len(src_insts) // batch_size) - 1
+        self.mode = mode
+        self.drop_last = drop_last
+
+        self.total_samples = len(src_insts)
+        if self.drop_last: 
+            self._n_batch = len(src_insts) // self.batch_size
+        else:
+            self._n_batch = (len(src_insts) + batch_size - 1) // batch_size
+
         self._batch_size = batch_size
 
         self._src_insts = src_insts
@@ -36,7 +40,11 @@ class DataLoader(object):
         self._tgt_idx2word = tgt_idx2word
 
         self._iter_count = 0
-        self.shuffle()
+        # for test data, we should not shuffle, because it is one to one map 
+        if mode == 'train':
+            self.shuffle()
+        else: 
+            pass # we donot shuffle when it is testing or validation set
 
     @property
     def n_insts(self):
@@ -75,7 +83,7 @@ class DataLoader(object):
 
     def shuffle(self):
         ''' Shuffle data for a brand new start '''
-        if self._tgt_insts:
+        if self._tgt_insts: # if there exists _tgt_insts 
             paired_insts = list(zip(self._src_insts, self._tgt_insts))
             random.shuffle(paired_insts)
             self._src_insts, self._tgt_insts = zip(*paired_insts)
@@ -100,12 +108,9 @@ class DataLoader(object):
 
             max_len = max(len(inst) for inst in insts)
 
-            inst_data = np.array([
-                inst + [Constants.PAD] * (max_len - len(inst))
-                for inst in insts])
-
-            inst_position = np.array([
-                [pos_i+1 if w_i != Constants.PAD else 0 for pos_i, w_i in enumerate(inst)]
+            inst_data = np.array([inst + [Constants.PAD] * (max_len - len(inst)) for inst in insts])
+            # 1, 2, ..., 0, 0, ..0 (0 means pad position) for each instance
+            inst_position = np.array([[pos_i+1 if w_i != Constants.PAD else 0 for pos_i, w_i in enumerate(inst)] 
                 for inst in inst_data])
 
             inst_data_tensor = Variable(torch.LongTensor(inst_data))
@@ -116,23 +121,34 @@ class DataLoader(object):
                 inst_position_tensor = inst_position_tensor.cuda()
             return inst_data_tensor, inst_position_tensor
 
-        if self._iter_count < self._n_batch:
-            self._iter_count += 1
+        if self._iter_count < self._n_batch: # can be self._n_batch-1(33)
 
-            start_idx = self._iter_count * self._batch_size
-            end_idx = (self._iter_count + 1) * self._batch_size
+            start_idx = self._iter_count * self._batch_size # 0 * 30, ..., 33 * 30 
+
+            self._iter_count = self._iter_count + 1
+
+            end_idx = self._iter_count * self._batch_size # 34 * 30
+
+            # last batch, if we donot drop_last 
+            if (not self.drop_last) and end_idx > self.total_samples:
+                end_idx = self.total_samples # note slicing doesnot include last index
 
             src_insts = self._src_insts[start_idx:end_idx]
+            # pad the data
             src_data, src_pos = pad_to_longest(src_insts)
 
             if not self._tgt_insts:
-                return src_data, src_pos
-            else:
+                return src_data, src_pos # return 
+            else: # if contains target
                 tgt_insts = self._tgt_insts[start_idx:end_idx]
                 tgt_data, tgt_pos = pad_to_longest(tgt_insts)
                 return (src_data, src_pos), (tgt_data, tgt_pos)
 
-        else:
-            self.shuffle()
+        else: # start a new epoch of loading data
+            if self.mode == 'train': # maybe we should add another flag to control whether to shuffle it 
+                self.shuffle()
+            else:
+                pass 
+
             self._iter_count = 0
             raise StopIteration()
