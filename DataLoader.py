@@ -11,7 +11,7 @@ class DataLoader(object):
     def __init__(
             self, src_word2idx, tgt_word2idx,
             src_insts=None, tgt_insts=None,
-            cuda=True, batch_size=64):
+            cuda=True, batch_size=64, shuffle=True):
 
         assert src_insts
         assert len(src_insts) >= batch_size
@@ -20,7 +20,8 @@ class DataLoader(object):
             assert len(src_insts) == len(tgt_insts)
 
         self.cuda = cuda
-        self._n_batch = (len(src_insts) // batch_size) - 1
+        self._n_batch = int(np.ceil(len(src_insts) / batch_size))
+
         self._batch_size = batch_size
 
         self._src_insts = src_insts
@@ -36,7 +37,11 @@ class DataLoader(object):
         self._tgt_idx2word = tgt_idx2word
 
         self._iter_count = 0
-        self.shuffle()
+
+        self._need_shuffle = shuffle
+
+        if self._need_shuffle:
+            self.shuffle()
 
     @property
     def n_insts(self):
@@ -117,10 +122,11 @@ class DataLoader(object):
             return inst_data_tensor, inst_position_tensor
 
         if self._iter_count < self._n_batch:
+            batch_idx = self._iter_count
             self._iter_count += 1
 
-            start_idx = self._iter_count * self._batch_size
-            end_idx = (self._iter_count + 1) * self._batch_size
+            start_idx = batch_idx * self._batch_size
+            end_idx = (batch_idx + 1) * self._batch_size
 
             src_insts = self._src_insts[start_idx:end_idx]
             src_data, src_pos = pad_to_longest(src_insts)
@@ -133,6 +139,9 @@ class DataLoader(object):
                 return (src_data, src_pos), (tgt_data, tgt_pos)
 
         else:
-            self.shuffle()
+
+            if self._need_shuffle:
+                self.shuffle()
+
             self._iter_count = 0
             raise StopIteration()
