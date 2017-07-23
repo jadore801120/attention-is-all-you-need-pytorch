@@ -212,6 +212,7 @@ def main():
         src_insts=data['valid']['src'],
         tgt_insts=data['valid']['tgt'],
         batch_size=opt.batch_size,
+        shuffle=False,
         cuda=opt.cuda)
 
     opt.src_vocab_size = training_data.src_vocab_size
