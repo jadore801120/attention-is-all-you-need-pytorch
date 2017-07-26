@@ -62,11 +62,13 @@ class Translator(object):
         enc_outputs, enc_slf_attns = self.model.encoder(src_seq, src_pos)
 
         #--- Repeat data for beam
-        src_seq = Variable(src_seq.data.repeat(beam_size, 1))
+        src_seq = src_seq.unsqueeze(0).repeat(beam_size, 1, 1)\
+        .transpose(0, 1).contiguous().view(batch_size * beam_size, 1, 1)
         enc_outputs = [
-            Variable(enc_output.data.repeat(beam_size, 1, 1))
-            for enc_output in enc_outputs]
-
+            Variable(enc_output.data.unsqueeze(0).repeat(beam_size, 1, 1, 1)\
+            .transpose(0,1).contiguous().view(batch_size * beam_size, enc_output.size(1), -1)
+            for enc_output in enc_outputs
+        ]
         #--- Prepare beams
         beam = [Beam(beam_size, self.opt.cuda) for k in range(batch_size)]
         batch_idx = list(range(batch_size))
