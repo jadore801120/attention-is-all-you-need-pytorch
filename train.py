@@ -28,6 +28,8 @@ def get_performance(crit, pred, gold, smoothing=False, num_class=None):
     loss = crit(pred, gold.contiguous().view(-1))
 
     pred = pred.max(1)[1]
+
+    gold = gold.contiguous().view(-1)
     n_correct = pred.data.eq(gold.data)
     n_correct = n_correct.masked_select(gold.ne(Constants.PAD).data).sum()
 
