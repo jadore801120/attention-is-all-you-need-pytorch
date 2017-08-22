@@ -150,6 +150,9 @@ class Transformer(nn.Module):
         self.tgt_word_proj = Linear(d_model, n_tgt_vocab, bias=False)
         self.dropout = nn.Dropout(dropout)
 
+        assert d_model == d_word_vec, \
+        'To facilitate the residual connections, the dimensions of all module output shall be the same.'
+
         if proj_share_weight:
             # Share the weight matrix between tgt word embedding/projection
             assert d_model == d_word_vec
