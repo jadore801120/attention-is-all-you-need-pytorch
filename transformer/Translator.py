@@ -59,16 +59,16 @@ class Translator(object):
         beam_size = self.opt.beam_size
 
         #- Enocde
-        enc_outputs, enc_slf_attns = self.model.encoder(src_seq, src_pos)
+        enc_output, *_ = self.model.encoder(src_seq, src_pos)
 
         #--- Repeat data for beam
         src_seq = Variable(
             src_seq.data.repeat(1, beam_size).view(
                 src_seq.size(0) * beam_size, src_seq.size(1)))
-        enc_outputs = [
-            Variable(enc.data.repeat(1, beam_size, 1).view(
-                enc.size(0) * beam_size, enc.size(1), enc.size(2)))
-            for enc in enc_outputs]
+
+        enc_output = Variable(
+            enc_output.data.repeat(1, beam_size, 1).view(
+                enc_output.size(0) * beam_size, enc_output.size(1), enc_output.size(2)))
 
         #--- Prepare beams
         beams = [Beam(beam_size, self.opt.cuda) for _ in range(batch_size)]
@@ -81,27 +81,31 @@ class Translator(object):
 
             len_dec_seq = i + 1
 
-            # -- Preparing decode data seq -- #
-            input_data = torch.stack([
-                b.get_current_state() for b in beams if not b.done]) # size: mb x bm x sq
-            input_data = input_data.view(-1, len_dec_seq)            # size: (mb*bm) x sq
-            input_data = Variable(input_data, volatile=True)
-
-            # -- Preparing decode pos seq -- #
-            # size: 1 x seq
-            input_pos = torch.arange(1, len_dec_seq + 1).unsqueeze(0)
+            # -- Preparing decoded data seq -- #
+            # size: batch x beam x seq
+            dec_partial_seq = torch.stack([
+                b.get_current_state() for b in beams if not b.done])
             # size: (batch * beam) x seq
-            input_pos = input_pos.repeat(n_remaining_sents * beam_size, 1)
-            input_pos = Variable(input_pos.type(torch.LongTensor), volatile=True)
+            dec_partial_seq = dec_partial_seq.view(-1, len_dec_seq)
+            # wrap into a Variable
+            dec_partial_seq = Variable(dec_partial_seq, volatile=True)
+
+            # -- Preparing decoded pos seq -- #
+            # size: 1 x seq
+            dec_partial_pos = torch.arange(1, len_dec_seq + 1).unsqueeze(0)
+            # size: (batch * beam) x seq
+            dec_partial_pos = dec_partial_pos.repeat(n_remaining_sents * beam_size, 1)
+            # wrap into a Variable
+            dec_partial_pos = Variable(dec_partial_pos.type(torch.LongTensor), volatile=True)
 
             if self.opt.cuda:
-                input_pos = input_pos.cuda()
-                input_data = input_data.cuda()
+                dec_partial_seq = dec_partial_seq.cuda()
+                dec_partial_pos = dec_partial_pos.cuda()
 
             # -- Decoding -- #
-            dec_outputs, dec_slf_attns, dec_enc_attns = self.model.decoder(
-                input_data, input_pos, src_seq, enc_outputs)
-            dec_output = dec_outputs[-1][:, -1, :] # (batch * beam) * d_model
+            dec_output, *_ = self.model.decoder(
+                dec_partial_seq, dec_partial_pos, src_seq, enc_output)
+            dec_output = dec_output[:, -1, :] # (batch * beam) * d_model
             dec_output = self.model.tgt_word_proj(dec_output)
             out = self.model.prob_projection(dec_output)
 
@@ -118,7 +122,7 @@ class Translator(object):
                     active_beam_idx_list += [beam_idx]
 
             if not active_beam_idx_list:
-                # all instances have find a solution
+                # all instances have finished their path to <EOS>
                 break
 
             # in this section, the sentences that are still active are
@@ -160,9 +164,7 @@ class Translator(object):
                 return Variable(active_enc_info_data, volatile=True)
 
             src_seq = update_active_seq(src_seq, active_inst_idxs)
-            enc_outputs = [
-                update_active_enc_info(enc, active_inst_idxs)
-                for enc in enc_outputs]
+            enc_output = update_active_enc_info(enc_output, active_inst_idxs)
 
             #- update the remaining size
             n_remaining_sents = len(active_inst_idxs)

@@ -61,23 +61,27 @@ class Encoder(nn.Module):
             EncoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
 
-    def forward(self, src_seq, src_pos):
+    def forward(self, src_seq, src_pos, return_attns=False):
         # Word embedding look up
         enc_input = self.src_word_emb(src_seq)
 
         # Position Encoding addition
         enc_input += self.position_enc(src_pos)
-        enc_outputs, enc_slf_attns = [], []
+        if return_attns:
+            enc_slf_attns = []
 
         enc_output = enc_input
         enc_slf_attn_mask = get_attn_padding_mask(src_seq, src_seq)
         for enc_layer in self.layer_stack:
             enc_output, enc_slf_attn = enc_layer(
                 enc_output, slf_attn_mask=enc_slf_attn_mask)
-            enc_outputs += [enc_output]
-            enc_slf_attns += [enc_slf_attn]
+            if return_attns:
+                enc_slf_attns += [enc_slf_attn]
 
-        return enc_outputs, enc_slf_attns
+        if return_attns:
+            return enc_output, enc_slf_attns
+        else:
+            return enc_output,
 
 class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
@@ -102,14 +106,12 @@ class Decoder(nn.Module):
             DecoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
 
-    def forward(self, tgt_seq, tgt_pos, src_seq, enc_outputs):
+    def forward(self, tgt_seq, tgt_pos, src_seq, enc_output, return_attns=False):
         # Word embedding look up
         dec_input = self.tgt_word_emb(tgt_seq)
 
         # Position Encoding addition
         dec_input += self.position_enc(tgt_pos)
-
-        dec_outputs, dec_slf_attns, dec_enc_attns = [], [], []
 
         # Decode
         dec_slf_attn_pad_mask = get_attn_padding_mask(tgt_seq, tgt_seq)
@@ -118,17 +120,24 @@ class Decoder(nn.Module):
 
         dec_enc_attn_pad_mask = get_attn_padding_mask(tgt_seq, src_seq)
 
+        if return_attns:
+            dec_slf_attns, dec_enc_attns = [], []
+
         dec_output = dec_input
-        for dec_layer, enc_output in zip(self.layer_stack, enc_outputs):
+        for dec_layer in self.layer_stack:
             dec_output, dec_slf_attn, dec_enc_attn = dec_layer(
-                dec_output, enc_output, slf_attn_mask=dec_slf_attn_mask,
+                dec_output, enc_output,
+                slf_attn_mask=dec_slf_attn_mask,
                 dec_enc_attn_mask=dec_enc_attn_pad_mask)
 
-            dec_outputs += [dec_output]
-            dec_slf_attns += [dec_slf_attn]
-            dec_enc_attns += [dec_enc_attn]
+            if return_attns:
+                dec_slf_attns += [dec_slf_attn]
+                dec_enc_attns += [dec_enc_attn]
 
-        return dec_outputs, dec_slf_attns, dec_enc_attns
+        if return_attns:
+            return dec_output, dec_slf_attns, dec_enc_attns
+        else:
+            return dec_output,
 
 class Transformer(nn.Module):
     ''' A sequence to sequence model with attention mechanism. '''
@@ -151,7 +160,8 @@ class Transformer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         assert d_model == d_word_vec, \
-        'To facilitate the residual connections, the dimensions of all module output shall be the same.'
+        'To facilitate the residual connections, \
+         the dimensions of all module output shall be the same.'
 
         if proj_share_weight:
             # Share the weight matrix between tgt word embedding/projection
@@ -179,11 +189,8 @@ class Transformer(nn.Module):
         tgt_seq = tgt_seq[:, :-1]
         tgt_pos = tgt_pos[:, :-1]
 
-        enc_outputs, enc_slf_attns = self.encoder(src_seq, src_pos)
-        dec_outputs, dec_slf_attns, dec_enc_attns = self.decoder(
-            tgt_seq, tgt_pos, src_seq, enc_outputs)
-        dec_output = dec_outputs[-1]
-
+        enc_output, *_ = self.encoder(src_seq, src_pos)
+        dec_output, *_ = self.decoder(tgt_seq, tgt_pos, src_seq, enc_output)
         seq_logit = self.tgt_word_proj(dec_output)
 
         return seq_logit.view(-1, seq_logit.size(2))
