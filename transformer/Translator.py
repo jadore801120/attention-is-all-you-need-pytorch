@@ -71,7 +71,7 @@ class Translator(object):
             for enc in enc_outputs]
 
         #--- Prepare beams
-        beams = [Beam(beam_size, self.opt.cuda) for k in range(batch_size)]
+        beams = [Beam(beam_size, self.opt.cuda) for _ in range(batch_size)]
         beam_inst_idx_map = {
             beam_idx: inst_idx for inst_idx, beam_idx in enumerate(range(batch_size))}
         n_remaining_sents = batch_size
@@ -161,8 +161,8 @@ class Translator(object):
 
             src_seq = update_active_seq(src_seq, active_inst_idxs)
             enc_outputs = [
-                update_active_enc_info(enc_output, active_inst_idxs)
-                for enc_output in enc_outputs]
+                update_active_enc_info(enc, active_inst_idxs)
+                for enc in enc_outputs]
 
             #- update the remaining size
             n_remaining_sents = len(active_inst_idxs)
@@ -172,9 +172,10 @@ class Translator(object):
         n_best = self.opt.n_best
 
         for beam_idx in range(batch_size):
-            scores, ks = beams[beam_idx].sort_scores()
+            scores, tail_idxs = beams[beam_idx].sort_scores()
             all_scores += [scores[:n_best]]
-            hyps = [beams[beam_idx].get_hypothesis(k) for k in ks[:n_best]]
+
+            hyps = [beams[beam_idx].get_hypothesis(i) for i in tail_idxs[:n_best]]
             all_hyp += [hyps]
 
         return all_hyp, all_scores
