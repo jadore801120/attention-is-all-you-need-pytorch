@@ -11,7 +11,7 @@ class DataLoader(object):
     def __init__(
             self, src_word2idx, tgt_word2idx,
             src_insts=None, tgt_insts=None,
-            cuda=True, batch_size=64, shuffle=True):
+            cuda=True, batch_size=64, shuffle=True, test=False):
 
         assert src_insts
         assert len(src_insts) >= batch_size
@@ -20,6 +20,7 @@ class DataLoader(object):
             assert len(src_insts) == len(tgt_insts)
 
         self.cuda = cuda
+        self.test = test
         self._n_batch = int(np.ceil(len(src_insts) / batch_size))
 
         self._batch_size = batch_size
@@ -113,8 +114,11 @@ class DataLoader(object):
                 [pos_i+1 if w_i != Constants.PAD else 0 for pos_i, w_i in enumerate(inst)]
                 for inst in inst_data])
 
-            inst_data_tensor = Variable(torch.LongTensor(inst_data))
-            inst_position_tensor = Variable(torch.LongTensor(inst_position))
+        
+            inst_data_tensor = Variable(
+                torch.LongTensor(inst_data), volatile=self.test)
+            inst_position_tensor = Variable(
+                torch.LongTensor(inst_position), volatile=self.test)
 
             if self.cuda:
                 inst_data_tensor = inst_data_tensor.cuda()
