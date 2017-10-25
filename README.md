@@ -78,16 +78,28 @@ python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src d
 ## Training
 
 <p align="center">
-<img src="http://imgur.com/i9Fs8Gh.png" width="400">
-<img src="http://imgur.com/GC2VsTA.png" width="400">
+<img src="https://imgur.com/A6byNQ8.png" width="400">
+<img src="https://imgur.com/5z4f4tw.png" width="400">
 </p>
 
-> Parameter settings:
->> batch_size=64, d_inner_hid=1024, d_k=64, d_v=64, d_model=512, d_word_vec=512, dropout=0.1, embs_share_weight=False, n_head=8, n_layers=6, n_warmup_steps=4000, proj_share_weight=True
+- Parameter settings:
+  - batch_size=64
+  - d_inner_hid=1024
+  - d_k=64
+  - d_v=64
+  - d_model=512
+  - d_word_vec=512
+  - dropout=0.1
+  - embs_share_weight=False
+  - n_head=8
+  - n_layers=6
+  - n_warmup_steps=4000
+  - proj_share_weight=True
 
-> Elapse (per epoch):
->> Training set: 2.4 min, Validation set: 0.03 min (on NVIDIA Titan X)
-
+- Elapse per epoch  (on NVIDIA Titan X):
+  - Training set: 1.38 min
+  - Validation set: 0.016 min
+  
 ## Testing 
 - coming soon.
 ---
