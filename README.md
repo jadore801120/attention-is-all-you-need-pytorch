@@ -98,4 +98,4 @@ python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src d
 ---
 # Acknowledgement
 - The project structure, some scripts and the dataset preprocessing steps are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py).
-- Thanks for the suggestions from @srush and @iamalbert.
+- Thanks for the suggestions from @srush, @iamalbert and @ZiJianZhao.
