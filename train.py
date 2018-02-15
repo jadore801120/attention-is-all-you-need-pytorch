@@ -35,7 +35,7 @@ def get_performance(crit, pred, gold, smoothing=False, num_class=None):
 
     return loss, n_correct
 
-def train_epoch(model, training_data, crit, optimizer):
+def train_epoch(model, training_data, crit, optimizer, teacher_forcing_ratio):
     ''' Epoch operation in training phase'''
 
     model.train()
@@ -54,7 +54,7 @@ def train_epoch(model, training_data, crit, optimizer):
 
         # forward
         optimizer.zero_grad()
-        pred = model(src, tgt)
+        pred = model(src, tgt, teacher_forcing_ratio)
 
         # backward
         loss, n_correct = get_performance(crit, pred, gold)
@@ -123,7 +123,8 @@ def train(model, training_data, validation_data, crit, optimizer, opt):
         print('[ Epoch', epoch_i, ']')
 
         start = time.time()
-        train_loss, train_accu = train_epoch(model, training_data, crit, optimizer)
+        teacher_forcing_ratio = max(0.0, 1.0 - epoch_i / opt.epoch)
+        train_loss, train_accu = train_epoch(model, training_data, crit, optimizer, teacher_forcing_ratio)
         print('  - (Training)   ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
               'elapse: {elapse:3.3f} min'.format(
                   ppl=math.exp(min(train_loss, 100)), accu=100*train_accu,

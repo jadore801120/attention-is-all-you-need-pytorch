@@ -5,6 +5,8 @@ import numpy as np
 import transformer.Constants as Constants
 from transformer.Modules import BottleLinear as Linear
 from transformer.Layers import EncoderLayer, DecoderLayer
+import random
+from torch.autograd import Variable
 
 __author__ = "Yu-Hsiang Huang"
 
@@ -182,7 +184,10 @@ class Transformer(nn.Module):
         freezed_param_ids = enc_freezed_param_ids | dec_freezed_param_ids
         return (p for p in self.parameters() if id(p) not in freezed_param_ids)
 
-    def forward(self, src, tgt):
+    def forward(self, src, tgt, teacher_forcing_ratio = 1.0):
+        batch_size = src[0].size(0)
+        max_len = tgt[0].size(1)
+
         src_seq, src_pos = src
         tgt_seq, tgt_pos = tgt
 
@@ -190,7 +195,23 @@ class Transformer(nn.Module):
         tgt_pos = tgt_pos[:, :-1]
 
         enc_output, *_ = self.encoder(src_seq, src_pos)
-        dec_output, *_ = self.decoder(tgt_seq, tgt_pos, src_seq, enc_output)
+        output_seq_full = Variable(tgt_seq.data)
+
+        for t in range(1, max_len):
+            output_seq = Variable(output_seq_full.data[:, :t])
+            output_pos = Variable(tgt_pos.data[:, :t])
+
+            output, *_ = self.decoder(output_seq, output_pos, src_seq, enc_output)
+            output_seq = output
+
+            words = self.tgt_word_proj(output_seq[:, -1])
+            maxs, indices = torch.max(words, 1)
+
+            is_teacher = t == 1 or random.random() < teacher_forcing_ratio
+            if is_teacher and t + 1 < max_len:
+                output_seq_full.data[:, t] = indices.data
+
+        dec_output = output
         seq_logit = self.tgt_word_proj(dec_output)
 
         return seq_logit.view(-1, seq_logit.size(2))
