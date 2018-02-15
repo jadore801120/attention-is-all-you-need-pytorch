@@ -24,7 +24,7 @@ class MultiHeadAttention(nn.Module):
         self.w_ks = nn.Parameter(torch.FloatTensor(n_head, d_model, d_k))
         self.w_vs = nn.Parameter(torch.FloatTensor(n_head, d_model, d_v))
 
-        self.attention = ScaledDotProductAttention(d_model)
+        self.attention = ScaledDotProductAttention(d_model, dropout)
         self.layer_norm = LayerNormalization(d_model)
         self.proj = Linear(n_head*d_v, d_model)
 
