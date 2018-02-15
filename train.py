@@ -14,6 +14,8 @@ import transformer.Constants as Constants
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
 from DataLoader import DataLoader
+import numpy as np
+import random
 
 def get_performance(crit, pred, gold, smoothing=False, num_class=None):
     ''' Apply label smoothing if needed '''
@@ -192,9 +194,22 @@ def main():
 
     parser.add_argument('-no_cuda', action='store_true')
 
+    parser.add_argument('-seed', type=int, default=None)
+
     opt = parser.parse_args()
     opt.cuda = not opt.no_cuda
     opt.d_word_vec = opt.d_model
+
+    if opt.seed:
+        torch.manual_seed(opt.seed)
+        if opt.cuda:
+            torch.cuda.manual_seed(opt.seed)
+
+        np.random.seed(opt.seed)
+        random.seed(opt.seed)
+
+        if opt.dropout != 0:
+            print('[Warning] Seed was passed but dropout more than 0.0.')
 
     #========= Loading Dataset =========#
     data = torch.load(opt.data)
