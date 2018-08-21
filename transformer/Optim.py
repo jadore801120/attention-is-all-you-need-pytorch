@@ -6,9 +6,9 @@ class ScheduledOptim(object):
 
     def __init__(self, optimizer, d_model, n_warmup_steps):
         self.optimizer = optimizer
-        self.d_model = d_model
         self.n_warmup_steps = n_warmup_steps
         self.n_current_steps = 0
+        self.lr_init = np.power(d_model, -0.5)
 
     def step(self):
         "Step by the inner optimizer"
@@ -22,9 +22,12 @@ class ScheduledOptim(object):
         ''' Learning rate scheduling per step '''
 
         self.n_current_steps += 1
-        new_lr = np.power(self.d_model, -0.5) * np.min([
-            np.power(self.n_current_steps, -0.5),
-            np.power(self.n_warmup_steps, -1.5) * self.n_current_steps])
+        lr = self.lr_init * self.get_lr_scale()
 
         for param_group in self.optimizer.param_groups:
-            param_group['lr'] = new_lr
+            param_group['lr'] = lr
+
+    def get_lr_scale(self):
+        return np.min([
+            np.power(self.n_current_steps, -0.5),
+            np.power(self.n_warmup_steps, -1.5) * self.n_current_steps])
