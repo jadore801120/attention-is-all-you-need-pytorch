@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 from transformer.Models import Transformer
 from transformer.Beam import Beam
@@ -60,6 +59,8 @@ class Translator(object):
 
         #- Enocde
         enc_output, *_ = self.model.encoder(src_seq, src_pos)
+
+        #with torch.no_grad():
 
         #--- Repeat data for beam
         src_seq = Variable(
