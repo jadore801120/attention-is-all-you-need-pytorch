@@ -8,17 +8,17 @@ from transformer.Layers import EncoderLayer, DecoderLayer
 
 __author__ = "Yu-Hsiang Huang"
 
-def position_encoding_init(n_position, d_pos_vec):
+def sinusoid_position_encoding_table(n_position, d_pos_vec):
     ''' Init the sinusoid position encoding table '''
 
     # keep dim 0 for padding token position encoding zero vector
     position_enc = np.array([
-        [pos / np.power(10000, 2 * (j // 2) / d_pos_vec) for j in range(d_pos_vec)]
+        [pos / np.power(10000, 2 * (j // 2) / d_pos_vec)for j in range(d_pos_vec)]
         if pos != 0 else np.zeros(d_pos_vec) for pos in range(n_position)])
 
     position_enc[1:, 0::2] = np.sin(position_enc[1:, 0::2]) # dim 2i
     position_enc[1:, 1::2] = np.cos(position_enc[1:, 1::2]) # dim 2i+1
-    return torch.from_numpy(position_enc).type(torch.FloatTensor)
+    return torch.FloatTensor(position_enc)
 
 def get_attn_padding_mask(seq_q, seq_k):
     ''' Indicate the padding-related part to mask '''
@@ -31,6 +31,7 @@ def get_attn_padding_mask(seq_q, seq_k):
 
 def get_attn_subsequent_mask(seq):
     ''' Get an attention mask to avoid using the subsequent info.'''
+
     assert seq.dim() == 2
     attn_shape = (seq.size(0), seq.size(1), seq.size(1))
     subsequent_mask = np.triu(np.ones(attn_shape), k=1).astype('uint8')
@@ -46,16 +47,20 @@ class Encoder(nn.Module):
             self, n_src_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
             d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
 
-        super(Encoder, self).__init__()
+        super().__init__()
 
         n_position = n_max_seq + 1
         self.n_max_seq = n_max_seq
         self.d_model = d_model
 
-        self.position_enc = nn.Embedding(n_position, d_word_vec, padding_idx=Constants.PAD)
-        self.position_enc.weight.data = position_encoding_init(n_position, d_word_vec)
+        self.position_enc = nn.Embedding(
+            n_position, d_word_vec, padding_idx=Constants.PAD)
+        self.position_enc.weight = nn.Parameter(
+            sinusoid_position_encoding_table(n_position, d_word_vec),
+            requires_grad=False)
 
-        self.src_word_emb = nn.Embedding(n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
+        self.src_word_emb = nn.Embedding(
+            n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
 
         self.layer_stack = nn.ModuleList([
             EncoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
@@ -85,18 +90,21 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
+
     def __init__(
             self, n_tgt_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
             d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
 
-        super(Decoder, self).__init__()
+        super().__init__()
         n_position = n_max_seq + 1
         self.n_max_seq = n_max_seq
         self.d_model = d_model
 
         self.position_enc = nn.Embedding(
             n_position, d_word_vec, padding_idx=Constants.PAD)
-        self.position_enc.weight.data = position_encoding_init(n_position, d_word_vec)
+        self.position_enc.weight = nn.Parameter(
+            sinusoid_position_encoding_table(n_position, d_word_vec),
+            requires_grad=False)
 
         self.tgt_word_emb = nn.Embedding(
             n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
@@ -147,7 +155,7 @@ class Transformer(nn.Module):
             d_word_vec=512, d_model=512, d_inner_hid=1024, d_k=64, d_v=64,
             dropout=0.1, proj_share_weight=True, embs_share_weight=True):
 
-        super(Transformer, self).__init__()
+        super().__init__()
         self.encoder = Encoder(
             n_src_vocab, n_max_seq, n_layers=n_layers, n_head=n_head,
             d_word_vec=d_word_vec, d_model=d_model,
@@ -182,12 +190,9 @@ class Transformer(nn.Module):
         freezed_param_ids = enc_freezed_param_ids | dec_freezed_param_ids
         return (p for p in self.parameters() if id(p) not in freezed_param_ids)
 
-    def forward(self, src, tgt):
-        src_seq, src_pos = src
-        tgt_seq, tgt_pos = tgt
+    def forward(self, src_seq, src_pos, tgt_seq, tgt_pos):
 
-        tgt_seq = tgt_seq[:, :-1]
-        tgt_pos = tgt_pos[:, :-1]
+        tgt_seq, tgt_pos = tgt_seq[:, :-1], tgt_pos[:, :-1]
 
         enc_output, *_ = self.encoder(src_seq, src_pos)
         dec_output, *_ = self.decoder(tgt_seq, tgt_pos, src_seq, enc_output)
