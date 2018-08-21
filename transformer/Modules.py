@@ -37,7 +37,7 @@ class LayerNormalization(nn.Module):
     ''' Layer normalization module '''
 
     def __init__(self, d_hid, eps=1e-3):
-        super(LayerNormalization, self).__init__()
+        super().__init__()
 
         self.eps = eps
         self.a_2 = nn.Parameter(torch.ones(d_hid), requires_grad=True)
@@ -72,7 +72,7 @@ class ScaledDotProductAttention(nn.Module):
     ''' Scaled Dot-Product Attention '''
 
     def __init__(self, d_model, attn_dropout=0.1):
-        super(ScaledDotProductAttention, self).__init__()
+        super().__init__()
         self.temper = np.power(d_model, 0.5)
         self.dropout = nn.Dropout(attn_dropout)
         self.softmax = BottleSoftmax()
