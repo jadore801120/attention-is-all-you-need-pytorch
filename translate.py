@@ -49,10 +49,10 @@ def main():
         TranslationDataset(
             src_word2idx=preprocess_data['dict']['src'],
             tgt_word2idx=preprocess_data['dict']['tgt'],
-            src_insts=test_src_insts,
+            src_insts=test_src_insts),
         num_workers=2,
         batch_size=opt.batch_size,
-        collate_fn=collate_fn))
+        collate_fn=collate_fn)
 
     translator = Translator(opt)
     translator.model.eval()
@@ -62,7 +62,7 @@ def main():
             all_hyp, all_scores = translator.translate_batch(batch)
             for idx_seqs in all_hyp:
                 for idx_seq in idx_seqs:
-                    pred_line = ' '.join([test_loader.tgt_idx2word[idx] for idx in idx_seq])
+                    pred_line = ' '.join([test_loader.dataset.tgt_idx2word[idx] for idx in idx_seq])
                     f.write(pred_line + '\n')
     print('[Info] Finished.')
 
