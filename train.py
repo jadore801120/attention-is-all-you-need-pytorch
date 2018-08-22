@@ -248,7 +248,7 @@ def main():
         weight[Constants.PAD] = 0
         return nn.CrossEntropyLoss(weight, size_average=False)
 
-    crit = get_criterion(training_data.tgt_vocab_size)
+    crit = get_criterion(training_data.dataset.tgt_vocab_size)
 
     device = torch.device('cuda' if opt.cuda else 'cpu')
 
