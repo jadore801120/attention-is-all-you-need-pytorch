@@ -208,8 +208,8 @@ def main():
 
     training_data, validation_data = prepare_dataloaders(data, opt)
 
-    opt.src_vocab_size = training_data.src_vocab_size
-    opt.tgt_vocab_size = training_data.tgt_vocab_size
+    opt.src_vocab_size = training_data.dataset.src_vocab_size
+    opt.tgt_vocab_size = training_data.dataset.tgt_vocab_size
 
     #========= Preparing Model =========#
     if opt.embs_share_weight and training_data.src_word2idx != training_data.tgt_word2idx:
