@@ -212,7 +212,7 @@ def main():
     opt.tgt_vocab_size = training_data.dataset.tgt_vocab_size
 
     #========= Preparing Model =========#
-    if opt.embs_share_weight and training_data.src_word2idx != training_data.tgt_word2idx:
+    if opt.embs_share_weight and training_data.dataset.src_word2idx != training_data.dataset.tgt_word2idx:
         print('[Warning]',
               'The src/tgt word2idx table are different but asked to share word embedding.')
 
