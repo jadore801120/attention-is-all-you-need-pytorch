@@ -31,8 +31,9 @@ def get_performance(crit, pred, gold, smoothing=False, num_class=None):
     pred = pred.max(1)[1]
 
     gold = gold.contiguous().view(-1)
-    n_correct = pred.data.eq(gold.data)
-    n_correct = n_correct.masked_select(gold.ne(Constants.PAD).data).sum()
+    msk_non_pad = gold.ne(Constants.PAD)
+    n_correct = pred.eq(gold)
+    n_correct = n_correct.masked_select(msk_non_pad).sum().item()
 
     return loss, n_correct
 
@@ -42,8 +43,8 @@ def train_epoch(model, training_data, crit, optimizer, device):
     model.train()
 
     total_loss = 0
-    n_total_words = 0
-    n_total_correct = 0
+    n_word_total = 0
+    n_word_correct = 0
 
     for batch in tqdm(
             training_data, mininterval=2,
@@ -62,17 +63,18 @@ def train_epoch(model, training_data, crit, optimizer, device):
         loss.backward()
 
         # update parameters
-        optimizer.step()
-        optimizer.update_learning_rate()
+        optimizer.step_and_update_lr()
 
         # note keeping
-        n_words = gold.data.ne(Constants.PAD).sum().item()
-        n_total_words += n_words
-        n_total_correct += n_correct
         total_loss += loss.item()
 
-    loss_per_word = total_loss/n_total_words
-    accuracy = n_total_correct/n_total_words
+        msk_non_pad = gold.ne(Constants.PAD)
+        n_word = msk_non_pad.sum().item()
+        n_word_total += n_word
+        n_word_correct += n_correct
+
+    loss_per_word = total_loss/n_word_total
+    accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
 def eval_epoch(model, validation_data, crit, device):
@@ -81,8 +83,8 @@ def eval_epoch(model, validation_data, crit, device):
     model.eval()
 
     total_loss = 0
-    n_total_words = 0
-    n_total_correct = 0
+    n_word_total = 0
+    n_word_correct = 0
 
     with torch.no_grad():
         for batch in tqdm(
@@ -98,13 +100,15 @@ def eval_epoch(model, validation_data, crit, device):
             loss, n_correct = get_performance(crit, pred, gold)
 
             # note keeping
-            n_words = gold.data.ne(Constants.PAD).sum().item()
-            n_total_words += n_words
-            n_total_correct += n_correct
             total_loss += loss.item()
 
-    loss_per_word = total_loss/n_total_words
-    accuracy = n_total_correct/n_total_words
+            msk_non_pad = gold.ne(Constants.PAD)
+            n_word = msk_non_pad.sum().item()
+            n_word_total += n_word
+            n_word_correct += n_correct
+
+    loss_per_word = total_loss/n_word_total
+    accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
 def train(model, training_data, validation_data, crit, optimizer, device, opt):
@@ -212,9 +216,9 @@ def main():
     opt.tgt_vocab_size = training_data.dataset.tgt_vocab_size
 
     #========= Preparing Model =========#
-    if opt.embs_share_weight and training_data.dataset.src_word2idx != training_data.dataset.tgt_word2idx:
-        print('[Warning]',
-              'The src/tgt word2idx table are different but asked to share word embedding.')
+    if opt.embs_share_weight:
+        assert training_data.dataset.src_word2idx == training_data.dataset.tgt_word2idx, \
+            'The src/tgt word2idx table are different but asked to share word embedding.'
 
     print(opt)
 
