@@ -31,9 +31,9 @@ def get_performance(crit, pred, gold, smoothing=False, n_class=None):
     pred = pred.max(1)[1]
 
     gold = gold.contiguous().view(-1)
-    msk_non_pad = gold.ne(Constants.PAD)
+    non_pad_mask = gold.ne(Constants.PAD)
     n_correct = pred.eq(gold)
-    n_correct = n_correct.masked_select(msk_non_pad).sum().item()
+    n_correct = n_correct.masked_select(non_pad_mask).sum().item()
 
     return loss, n_correct
 
@@ -68,8 +68,8 @@ def train_epoch(model, training_data, crit, optimizer, device):
         # note keeping
         total_loss += loss.item()
 
-        msk_non_pad = gold.ne(Constants.PAD)
-        n_word = msk_non_pad.sum().item()
+        non_pad_mask = gold.ne(Constants.PAD)
+        n_word = non_pad_mask.sum().item()
         n_word_total += n_word
         n_word_correct += n_correct
 
@@ -102,8 +102,8 @@ def eval_epoch(model, validation_data, crit, device):
             # note keeping
             total_loss += loss.item()
 
-            msk_non_pad = gold.ne(Constants.PAD)
-            n_word = msk_non_pad.sum().item()
+            non_pad_mask = gold.ne(Constants.PAD)
+            n_word = non_pad_mask.sum().item()
             n_word_total += n_word
             n_word_correct += n_correct
 
@@ -241,7 +241,7 @@ def main():
 
     optimizer = ScheduledOptim(
         optim.Adam(
-            transformer.get_trainable_parameters(),
+            filter(lambda x: x.requires_grad, transformer.parameters()),
             betas=(0.9, 0.98), eps=1e-09),
         opt.d_model, opt.n_warmup_steps)
 

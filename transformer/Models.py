@@ -28,7 +28,7 @@ def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
 
     return torch.FloatTensor(sinusoid_table)
 
-def get_attn_padding_mask(seq_q, seq_k):
+def get_padding_mask(seq_q, seq_k):
     ''' For masking out the padding part. '''
 
     len_q = seq_q.size(1)
@@ -37,7 +37,7 @@ def get_attn_padding_mask(seq_q, seq_k):
 
     return padding_mask
 
-def get_attn_subsequent_mask(seq):
+def get_subsequent_mask(seq):
     ''' For masking out the subsequent info. '''
 
     sz_b, len_s = seq.size()
@@ -52,9 +52,9 @@ class Encoder(nn.Module):
 
     def __init__(
             self,
-            n_src_vocab, len_max_seq, d_word_vec=512,
-            n_layers=6, n_head=8, d_k=64, d_v=64,
-            d_model=512, d_inner=1024, dropout=0.1):
+            n_src_vocab, len_max_seq, d_word_vec,
+            n_layers, n_head, d_k, d_v,
+            d_model, d_inner, dropout=0.1):
 
         super().__init__()
 
@@ -72,35 +72,29 @@ class Encoder(nn.Module):
             for _ in range(n_layers)])
 
     def forward(self, src_seq, src_pos, return_attns=False):
-        # Word embedding look up
-        enc_input = self.src_word_emb(src_seq)
 
-        # Position Encoding addition
-        enc_input += self.position_enc(src_pos)
-        if return_attns:
-            enc_slf_attns = []
+        enc_slf_attn_list = []
+        slf_attn_mask = get_padding_mask(src_seq, src_seq)
 
-        enc_output = enc_input
-        enc_slf_attn_mask = get_attn_padding_mask(src_seq, src_seq)
+        enc_output = self.src_word_emb(src_seq) + self.position_enc(src_pos)
+
         for enc_layer in self.layer_stack:
-            enc_output, enc_slf_attn = enc_layer(
-                enc_output, slf_attn_mask=enc_slf_attn_mask)
+            enc_output, enc_slf_attn = enc_layer(enc_output, slf_attn_mask=slf_attn_mask)
             if return_attns:
-                enc_slf_attns += [enc_slf_attn]
+                enc_slf_attn_list += [enc_slf_attn]
 
         if return_attns:
-            return enc_output, enc_slf_attns
-        else:
-            return enc_output,
+            return enc_output, enc_slf_attn_list
+        return enc_output,
 
 class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
 
     def __init__(
             self,
-            n_tgt_vocab, len_max_seq, d_word_vec=512,
-            n_layers=6, n_head=8, d_k=64, d_v=64,
-            d_model=512, d_inner=1024, dropout=0.1):
+            n_tgt_vocab, len_max_seq, d_word_vec,
+            n_layers, n_head, d_k, d_v,
+            d_model, d_inner, dropout=0.1):
 
         super().__init__()
         n_position = len_max_seq + 1
@@ -117,37 +111,25 @@ class Decoder(nn.Module):
             for _ in range(n_layers)])
 
     def forward(self, tgt_seq, tgt_pos, src_seq, enc_output, return_attns=False):
-        # Word embedding look up
-        dec_input = self.tgt_word_emb(tgt_seq)
 
-        # Position Encoding addition
-        dec_input += self.position_enc(tgt_pos)
+        dec_slf_attn_list, dec_enc_attn_list = [], []
+        slf_attn_mask = (get_padding_mask(tgt_seq, tgt_seq) + get_subsequent_mask(tgt_seq)).gt(0)
+        dec_enc_attn_mask = get_padding_mask(tgt_seq, src_seq)
 
-        # Decode
-        dec_slf_attn_pad_mask = get_attn_padding_mask(tgt_seq, tgt_seq)
-        dec_slf_attn_sub_mask = get_attn_subsequent_mask(tgt_seq)
-        dec_slf_attn_mask = torch.gt(dec_slf_attn_pad_mask + dec_slf_attn_sub_mask, 0)
+        dec_output = self.tgt_word_emb(tgt_seq) + self.position_enc(tgt_pos)
 
-        dec_enc_attn_pad_mask = get_attn_padding_mask(tgt_seq, src_seq)
-
-        if return_attns:
-            dec_slf_attns, dec_enc_attns = [], []
-
-        dec_output = dec_input
         for dec_layer in self.layer_stack:
             dec_output, dec_slf_attn, dec_enc_attn = dec_layer(
                 dec_output, enc_output,
-                slf_attn_mask=dec_slf_attn_mask,
-                dec_enc_attn_mask=dec_enc_attn_pad_mask)
+                slf_attn_mask=slf_attn_mask, dec_enc_attn_mask=dec_enc_attn_mask)
 
             if return_attns:
-                dec_slf_attns += [dec_slf_attn]
-                dec_enc_attns += [dec_enc_attn]
+                dec_slf_attn_list += [dec_slf_attn]
+                dec_enc_attn_list += [dec_enc_attn]
 
         if return_attns:
-            return dec_output, dec_slf_attns, dec_enc_attns
-        else:
-            return dec_output,
+            return dec_output, dec_slf_attn_list, dec_enc_attn_list
+        return dec_output,
 
 class Transformer(nn.Module):
     ''' A sequence to sequence model with attention mechanism. '''
@@ -156,8 +138,8 @@ class Transformer(nn.Module):
             self,
             n_src_vocab, n_tgt_vocab, len_max_seq,
             d_word_vec=512, d_model=512, d_inner=1024,
-            n_layers=6, n_head=8, d_k=64, d_v=64,
-            dropout=0.1, proj_share_weight=True, embs_share_weight=True):
+            n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1,
+            proj_share_weight=True, embs_share_weight=True):
 
         super().__init__()
 
@@ -190,13 +172,6 @@ class Transformer(nn.Module):
             assert n_src_vocab == n_tgt_vocab, \
             "To share word embedding table, the vocabulary size of src/tgt shall be the same."
             self.encoder.src_word_emb.weight = self.decoder.tgt_word_emb.weight
-
-    def get_trainable_parameters(self):
-        ''' Avoid updating the position encoding '''
-        enc_freezed_param_ids = set(map(id, self.encoder.position_enc.parameters()))
-        dec_freezed_param_ids = set(map(id, self.decoder.position_enc.parameters()))
-        freezed_param_ids = enc_freezed_param_ids | dec_freezed_param_ids
-        return (p for p in self.parameters() if id(p) not in freezed_param_ids)
 
     def forward(self, src_seq, src_pos, tgt_seq, tgt_pos):
 
