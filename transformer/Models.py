@@ -20,23 +20,22 @@ def sinusoid_position_encoding_table(n_position, d_pos_vec):
     return torch.FloatTensor(position_enc)
 
 def get_attn_padding_mask(seq_q, seq_k):
-    ''' Indicate the padding-related part to mask '''
-    assert seq_q.dim() == 2 and seq_k.dim() == 2
-    mb_size, len_q = seq_q.size()
-    mb_size, len_k = seq_k.size()
-    pad_attn_mask = seq_k.data.eq(Constants.PAD).unsqueeze(1)   # bx1xsk
-    pad_attn_mask = pad_attn_mask.expand(mb_size, len_q, len_k) # bxsqxsk
-    return pad_attn_mask
+    ''' For masking out the padding part. '''
+
+    sz_b, len_q = seq_q.size()
+    sz_b, len_k = seq_k.size()
+    padding_mask = seq_k.eq(Constants.PAD)
+    padding_mask = padding_mask.unsqueeze(1).expand(sz_b, len_q, len_k)
+    return padding_mask
 
 def get_attn_subsequent_mask(seq):
-    ''' Get an attention mask to avoid using the subsequent info.'''
+    ''' For masking out the subsequent info.'''
 
-    assert seq.dim() == 2
-    attn_shape = (seq.size(0), seq.size(1), seq.size(1))
-    subsequent_mask = np.triu(np.ones(attn_shape), k=1).astype('uint8')
-    subsequent_mask = torch.from_numpy(subsequent_mask)
-    if seq.is_cuda:
-        subsequent_mask = subsequent_mask.cuda()
+    sz_b, len_s = seq.size()
+
+    subsequent_mask = torch.ones((len_s, len_s), device=seq.device, dtype=torch.uint8)
+    subsequent_mask = torch.triu(subsequent_mask, diagonal=1)
+    subsequent_mask = subsequent_mask.unsqueeze(0).expand(sz_b, len_s, len_s)
     return subsequent_mask
 
 class Encoder(nn.Module):
