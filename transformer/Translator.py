@@ -107,7 +107,7 @@ class Translator(object):
             dec_output, *_ = self.model.decoder(
                 dec_partial_seq, dec_partial_pos, src_seq, enc_output)
             dec_output = dec_output[:, -1, :] # (batch * beam) * d_model
-            dec_output = self.model.tgt_word_proj(dec_output)
+            dec_output = self.model.tgt_word_prj(dec_output)
             out = self.model.prob_projection(dec_output)
 
             # batch x beam x n_words
