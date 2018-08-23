@@ -22,20 +22,20 @@ def sinusoid_position_encoding_table(n_position, d_pos_vec):
 def get_attn_padding_mask(seq_q, seq_k):
     ''' For masking out the padding part. '''
 
-    sz_b, len_q = seq_q.size()
-    sz_b, len_k = seq_k.size()
+    len_q = seq_q.size(1)
     padding_mask = seq_k.eq(Constants.PAD)
-    padding_mask = padding_mask.unsqueeze(1).expand(sz_b, len_q, len_k)
+    padding_mask = padding_mask.unsqueeze(1).expand(-1, len_q, -1) # b x lq x lk
+
     return padding_mask
 
 def get_attn_subsequent_mask(seq):
-    ''' For masking out the subsequent info.'''
+    ''' For masking out the subsequent info. '''
 
     sz_b, len_s = seq.size()
+    subsequent_mask = torch.triu(
+        torch.ones((len_s, len_s), device=seq.device, dtype=torch.uint8), diagonal=1)
+    subsequent_mask = subsequent_mask.unsqueeze(0).expand(sz_b, -1, -1) # b x ls x ls
 
-    subsequent_mask = torch.ones((len_s, len_s), device=seq.device, dtype=torch.uint8)
-    subsequent_mask = torch.triu(subsequent_mask, diagonal=1)
-    subsequent_mask = subsequent_mask.unsqueeze(0).expand(sz_b, len_s, len_s)
     return subsequent_mask
 
 class Encoder(nn.Module):
