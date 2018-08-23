@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
         v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v) # (n*b) x lv x dv
 
         mask = mask.repeat(n_head, 1, 1) # (n*b) x .. x ..
-        output, attns = self.attention(q, k, v, mask=mask)
+        output, attn = self.attention(q, k, v, mask=mask)
 
         output = output.view(n_head, sz_b, len_q, d_v)
         output = output.permute(1, 2, 0, 3).contiguous().view(sz_b, len_q, -1) # b x lq x (n*dv)
@@ -60,7 +60,7 @@ class MultiHeadAttention(nn.Module):
         output = self.dropout(self.fc(output))
         output = self.layer_norm(output + residual)
 
-        return output, attns
+        return output, attn
 
 class PositionwiseFeedForward(nn.Module):
     ''' A two-feed-forward-layer module '''
