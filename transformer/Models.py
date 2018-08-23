@@ -7,17 +7,26 @@ from transformer.Layers import EncoderLayer, DecoderLayer
 
 __author__ = "Yu-Hsiang Huang"
 
-def sinusoid_position_encoding_table(n_position, d_pos_vec):
-    ''' Init the sinusoid position encoding table '''
 
-    # keep dim 0 for padding token position encoding zero vector
-    position_enc = np.array([
-        [pos / np.power(10000, 2 * (j // 2) / d_pos_vec)for j in range(d_pos_vec)]
-        if pos != 0 else np.zeros(d_pos_vec) for pos in range(n_position)])
+def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
+    ''' Sinusoid position encoding table '''
 
-    position_enc[1:, 0::2] = np.sin(position_enc[1:, 0::2]) # dim 2i
-    position_enc[1:, 1::2] = np.cos(position_enc[1:, 1::2]) # dim 2i+1
-    return torch.FloatTensor(position_enc)
+    def cal_angle(hid_idx, position):
+        return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+
+    def get_posi_angle_vec(position, d_hid):
+        return [cal_angle(hid_j, position) for hid_j in range(d_hid)]
+
+    sinusoid_table = np.array([get_posi_angle_vec(pos_i, d_hid) for pos_i in range(n_position)])
+
+    sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
+    sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
+
+    if padding_idx is not None:
+        # zero vector for padding dimension
+        sinusoid_table[padding_idx] = 0.
+
+    return torch.FloatTensor(sinusoid_table)
 
 def get_attn_padding_mask(seq_q, seq_k):
     ''' For masking out the padding part. '''
@@ -51,11 +60,9 @@ class Encoder(nn.Module):
         self.n_max_seq = n_max_seq
         self.d_model = d_model
 
-        self.position_enc = nn.Embedding(
-            n_position, d_word_vec, padding_idx=Constants.PAD)
-        self.position_enc.weight = nn.Parameter(
-            sinusoid_position_encoding_table(n_position, d_word_vec),
-            requires_grad=False)
+        self.position_enc = nn.Embedding.from_pretrained(
+            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=Constants.PAD),
+            freeze=True)
 
         self.src_word_emb = nn.Embedding(
             n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
@@ -98,11 +105,9 @@ class Decoder(nn.Module):
         self.n_max_seq = n_max_seq
         self.d_model = d_model
 
-        self.position_enc = nn.Embedding(
-            n_position, d_word_vec, padding_idx=Constants.PAD)
-        self.position_enc.weight = nn.Parameter(
-            sinusoid_position_encoding_table(n_position, d_word_vec),
-            requires_grad=False)
+        self.position_enc = nn.Embedding.from_pretrained(
+            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=Constants.PAD),
+            freeze=True)
 
         self.tgt_word_emb = nn.Embedding(
             n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
