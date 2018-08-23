@@ -232,7 +232,7 @@ def main():
         d_v=opt.d_v,
         d_model=opt.d_model,
         d_word_vec=opt.d_word_vec,
-        d_inner_hid=opt.d_inner_hid,
+        d_inner=opt.d_inner_hid,
         n_layers=opt.n_layers,
         n_head=opt.n_head,
         dropout=opt.dropout)

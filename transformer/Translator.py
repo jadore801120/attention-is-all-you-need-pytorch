@@ -27,7 +27,7 @@ class Translator(object):
             d_v=model_opt.d_v,
             d_model=model_opt.d_model,
             d_word_vec=model_opt.d_word_vec,
-            d_inner_hid=model_opt.d_inner_hid,
+            d_inner=model_opt.d_inner_hid,
             n_layers=model_opt.n_layers,
             n_head=model_opt.n_head,
             dropout=model_opt.dropout)

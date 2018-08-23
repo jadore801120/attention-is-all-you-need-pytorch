@@ -51,24 +51,24 @@ class Encoder(nn.Module):
     ''' A encoder model with self attention mechanism. '''
 
     def __init__(
-            self, n_src_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
-            d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
+            self,
+            n_src_vocab, len_max_seq, d_word_vec=512,
+            n_layers=6, n_head=8, d_k=64, d_v=64,
+            d_model=512, d_inner=1024, dropout=0.1):
 
         super().__init__()
 
-        n_position = n_max_seq + 1
-        self.n_max_seq = n_max_seq
-        self.d_model = d_model
+        n_position = len_max_seq + 1
+
+        self.src_word_emb = nn.Embedding(
+            n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
 
         self.position_enc = nn.Embedding.from_pretrained(
             get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
             freeze=True)
 
-        self.src_word_emb = nn.Embedding(
-            n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
-
         self.layer_stack = nn.ModuleList([
-            EncoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
+            EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
 
     def forward(self, src_seq, src_pos, return_attns=False):
@@ -97,24 +97,23 @@ class Decoder(nn.Module):
     ''' A decoder model with self attention mechanism. '''
 
     def __init__(
-            self, n_tgt_vocab, n_max_seq, n_layers=6, n_head=8, d_k=64, d_v=64,
-            d_word_vec=512, d_model=512, d_inner_hid=1024, dropout=0.1):
+            self,
+            n_tgt_vocab, len_max_seq, d_word_vec=512,
+            n_layers=6, n_head=8, d_k=64, d_v=64,
+            d_model=512, d_inner=1024, dropout=0.1):
 
         super().__init__()
-        n_position = n_max_seq + 1
-        self.n_max_seq = n_max_seq
-        self.d_model = d_model
+        n_position = len_max_seq + 1
+
+        self.tgt_word_emb = nn.Embedding(
+            n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
 
         self.position_enc = nn.Embedding.from_pretrained(
             get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
             freeze=True)
 
-        self.tgt_word_emb = nn.Embedding(
-            n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
-        self.dropout = nn.Dropout(dropout)
-
         self.layer_stack = nn.ModuleList([
-            DecoderLayer(d_model, d_inner_hid, n_head, d_k, d_v, dropout=dropout)
+            DecoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
 
     def forward(self, tgt_seq, tgt_pos, src_seq, enc_output, return_attns=False):
@@ -154,23 +153,28 @@ class Transformer(nn.Module):
     ''' A sequence to sequence model with attention mechanism. '''
 
     def __init__(
-            self, n_src_vocab, n_tgt_vocab, n_max_seq, n_layers=6, n_head=8,
-            d_word_vec=512, d_model=512, d_inner_hid=1024, d_k=64, d_v=64,
+            self,
+            n_src_vocab, n_tgt_vocab, len_max_seq,
+            d_word_vec=512, d_model=512, d_inner=1024,
+            n_layers=6, n_head=8, d_k=64, d_v=64,
             dropout=0.1, proj_share_weight=True, embs_share_weight=True):
 
         super().__init__()
+
         self.encoder = Encoder(
-            n_src_vocab, n_max_seq, n_layers=n_layers, n_head=n_head,
-            d_word_vec=d_word_vec, d_model=d_model,
-            d_inner_hid=d_inner_hid, dropout=dropout)
+            n_src_vocab=n_src_vocab, len_max_seq=len_max_seq,
+            d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner,
+            n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,
+            dropout=dropout)
+
         self.decoder = Decoder(
-            n_tgt_vocab, n_max_seq, n_layers=n_layers, n_head=n_head,
-            d_word_vec=d_word_vec, d_model=d_model,
-            d_inner_hid=d_inner_hid, dropout=dropout)
+            n_tgt_vocab=n_tgt_vocab, len_max_seq=len_max_seq,
+            d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner,
+            n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,
+            dropout=dropout)
+
         self.tgt_word_proj = nn.Linear(d_model, n_tgt_vocab, bias=False)
         nn.init.xavier_normal_(self.tgt_word_proj.weight)
-
-        self.dropout = nn.Dropout(dropout)
 
         assert d_model == d_word_vec, \
         'To facilitate the residual connections, \
@@ -178,12 +182,11 @@ class Transformer(nn.Module):
 
         if proj_share_weight:
             # Share the weight matrix between tgt word embedding/projection
-            assert d_model == d_word_vec
             self.tgt_word_proj.weight = self.decoder.tgt_word_emb.weight
 
         if embs_share_weight:
             # Share the weight matrix between src/tgt word embeddings
-            # assume the src/tgt word vec size are the same
+            # the src/tgt word vec size shall be the same
             assert n_src_vocab == n_tgt_vocab, \
             "To share word embedding table, the vocabulary size of src/tgt shall be the same."
             self.encoder.src_word_emb.weight = self.decoder.tgt_word_emb.weight
