@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 import transformer.Constants as Constants
-from transformer.Modules import BottleLinear as Linear
 from transformer.Layers import EncoderLayer, DecoderLayer
 
 __author__ = "Yu-Hsiang Huang"
@@ -164,7 +163,9 @@ class Transformer(nn.Module):
             n_tgt_vocab, n_max_seq, n_layers=n_layers, n_head=n_head,
             d_word_vec=d_word_vec, d_model=d_model,
             d_inner_hid=d_inner_hid, dropout=dropout)
-        self.tgt_word_proj = Linear(d_model, n_tgt_vocab, bias=False)
+        self.tgt_word_proj = nn.Linear(d_model, n_tgt_vocab, bias=False)
+        nn.init.xavier_normal_(self.tgt_word_proj.weight)
+
         self.dropout = nn.Dropout(dropout)
 
         assert d_model == d_word_vec, \
