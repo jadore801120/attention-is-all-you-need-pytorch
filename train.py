@@ -16,14 +16,14 @@ from dataset import TranslationDataset, paired_collate_fn
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
 
-def get_performance(crit, pred, gold, smoothing=False, num_class=None):
+def get_performance(crit, pred, gold, smoothing=False, n_class=None):
     ''' Apply label smoothing if needed '''
 
     # TODO: Add smoothing
     if smoothing:
-        assert bool(num_class)
+        assert bool(n_class)
         eps = 0.1
-        gold = gold * (1 - eps) + (1 - gold) * eps / num_class
+        gold = gold * (1 - eps) + (1 - gold) * eps / n_class
         raise NotImplementedError
 
     loss = crit(pred, gold.contiguous().view(-1))
