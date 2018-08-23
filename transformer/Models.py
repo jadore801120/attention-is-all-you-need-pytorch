@@ -61,7 +61,7 @@ class Encoder(nn.Module):
         self.d_model = d_model
 
         self.position_enc = nn.Embedding.from_pretrained(
-            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=Constants.PAD),
+            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
             freeze=True)
 
         self.src_word_emb = nn.Embedding(
@@ -106,7 +106,7 @@ class Decoder(nn.Module):
         self.d_model = d_model
 
         self.position_enc = nn.Embedding.from_pretrained(
-            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=Constants.PAD),
+            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
             freeze=True)
 
         self.tgt_word_emb = nn.Embedding(
