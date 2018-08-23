@@ -139,7 +139,7 @@ class Transformer(nn.Module):
             n_src_vocab, n_tgt_vocab, len_max_seq,
             d_word_vec=512, d_model=512, d_inner=1024,
             n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1,
-            proj_share_weight=True, embs_share_weight=True):
+            tgt_emb_prj_weight_sharing=True, emb_src_tgt_weight_sharing=True):
 
         super().__init__()
 
@@ -162,11 +162,11 @@ class Transformer(nn.Module):
         'To facilitate the residual connections, \
          the dimensions of all module output shall be the same.'
 
-        if proj_share_weight:
+        if tgt_emb_prj_weight_sharing:
             # Share the weight matrix between tgt word embedding/projection
             self.tgt_word_proj.weight = self.decoder.tgt_word_emb.weight
 
-        if embs_share_weight:
+        if emb_src_tgt_weight_sharing:
             # Share the weight matrix between src/tgt word embeddings
             # the src/tgt word vec size shall be the same
             assert n_src_vocab == n_tgt_vocab, \
