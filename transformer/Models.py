@@ -33,7 +33,7 @@ def get_attn_padding_mask(seq_q, seq_k):
 
     len_q = seq_q.size(1)
     padding_mask = seq_k.eq(Constants.PAD)
-    padding_mask = padding_mask.unsqueeze(1).expand(-1, len_q, -1) # b x lq x lk
+    padding_mask = padding_mask.unsqueeze(1).expand(-1, len_q, -1)  # b x lq x lk
 
     return padding_mask
 
@@ -43,7 +43,7 @@ def get_attn_subsequent_mask(seq):
     sz_b, len_s = seq.size()
     subsequent_mask = torch.triu(
         torch.ones((len_s, len_s), device=seq.device, dtype=torch.uint8), diagonal=1)
-    subsequent_mask = subsequent_mask.unsqueeze(0).expand(sz_b, -1, -1) # b x ls x ls
+    subsequent_mask = subsequent_mask.unsqueeze(0).expand(sz_b, -1, -1)  # b x ls x ls
 
     return subsequent_mask
 
