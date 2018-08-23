@@ -11,7 +11,7 @@ class Translator(object):
 
     def __init__(self, opt):
         self.opt = opt
-        self.tt = torch.cuda if opt.cuda else torch
+        self.device = torch.device('cuda' if opt.cuda else 'cpu')
 
         checkpoint = torch.load(opt.model)
         model_opt = checkpoint['settings']
@@ -55,24 +55,22 @@ class Translator(object):
         # Batch size is in different location depending on data.
         src_seq, src_pos = src_batch
         batch_size = src_seq.size(0)
-        beam_size = self.opt.beam_size
+        sz_beam = self.opt.beam_size
 
         #- Enocde
         enc_output, *_ = self.model.encoder(src_seq, src_pos)
 
-        #with torch.no_grad():
+        # TODO: with torch.no_grad():
 
         #--- Repeat data for beam
-        src_seq = Variable(
-            src_seq.data.repeat(1, beam_size).view(
-                src_seq.size(0) * beam_size, src_seq.size(1)))
+        sz_b, len_s = src_seq.size()
+        src_seq = src_seq.repeat(1, sz_beam).view(sz_b * sz_beam, len_s)
 
-        enc_output = Variable(
-            enc_output.data.repeat(1, beam_size, 1).view(
-                enc_output.size(0) * beam_size, enc_output.size(1), enc_output.size(2)))
+        sz_b, len_s, d_h = enc_output.size()
+        enc_output = enc_output.repeat(1, sz_beam, 1).view( sz_b * sz_beam, len_s, d_h)
 
         #--- Prepare beams
-        beams = [Beam(beam_size, self.opt.cuda) for _ in range(batch_size)]
+        beams = [Beam(sz_beam, self.opt.cuda) for _ in range(batch_size)]
         beam_inst_idx_map = {
             beam_idx: inst_idx for inst_idx, beam_idx in enumerate(range(batch_size))}
         n_remaining_sents = batch_size
@@ -85,19 +83,15 @@ class Translator(object):
             # -- Preparing decoded data seq -- #
             # size: batch x beam x seq
             dec_partial_seq = torch.stack([
-                b.get_current_state() for b in beams if not b.done])
+                b.get_current_state() for b in beams if not b.done]).to(self.device)
             # size: (batch * beam) x seq
             dec_partial_seq = dec_partial_seq.view(-1, len_dec_seq)
-            # wrap into a Variable
-            dec_partial_seq = Variable(dec_partial_seq, volatile=True)
 
             # -- Preparing decoded pos seq -- #
             # size: 1 x seq
-            dec_partial_pos = torch.arange(1, len_dec_seq + 1).unsqueeze(0)
+            dec_partial_pos = torch.arange(1, len_dec_seq + 1, dtype=torch.long, device=self.device)
             # size: (batch * beam) x seq
-            dec_partial_pos = dec_partial_pos.repeat(n_remaining_sents * beam_size, 1)
-            # wrap into a Variable
-            dec_partial_pos = Variable(dec_partial_pos.type(torch.LongTensor), volatile=True)
+            dec_partial_pos = dec_partial_pos.unsqueeze(0).repeat(n_remaining_sents * sz_beam, 1)
 
             if self.opt.cuda:
                 dec_partial_seq = dec_partial_seq.cuda()
@@ -111,7 +105,7 @@ class Translator(object):
             out = self.model.prob_projection(dec_output)
 
             # batch x beam x n_words
-            word_lk = out.view(n_remaining_sents, beam_size, -1).contiguous()
+            word_lk = out.view(n_remaining_sents, sz_beam, -1).contiguous()
 
             active_beam_idx_list = []
             for beam_idx in range(batch_size):
@@ -128,8 +122,9 @@ class Translator(object):
 
             # in this section, the sentences that are still active are
             # compacted so that the decoder is not run on completed sentences
-            active_inst_idxs = self.tt.LongTensor(
-                [beam_inst_idx_map[k] for k in active_beam_idx_list])
+            active_inst_idxs = torch.LongTensor(
+                [beam_inst_idx_map[k] for k in active_beam_idx_list],
+                device=self.device)
 
             # update the idx mapping
             beam_inst_idx_map = {
@@ -147,7 +142,7 @@ class Translator(object):
                 active_seq_data = original_seq_data.index_select(0, active_inst_idxs)
                 active_seq_data = active_seq_data.view(*new_size)
 
-                return Variable(active_seq_data, volatile=True)
+                return torch.clone(active_seq_data)
 
             def update_active_enc_info(enc_info_var, active_inst_idxs):
                 ''' Remove the encoder outputs of finished instances in one batch. '''
@@ -162,7 +157,7 @@ class Translator(object):
                 active_enc_info_data = original_enc_info_data.index_select(0, active_inst_idxs)
                 active_enc_info_data = active_enc_info_data.view(*new_size)
 
-                return Variable(active_enc_info_data, volatile=True)
+                return torch.clone(active_enc_info_data)
 
             src_seq = update_active_seq(src_seq, active_inst_idxs)
             enc_output = update_active_enc_info(enc_output, active_inst_idxs)
