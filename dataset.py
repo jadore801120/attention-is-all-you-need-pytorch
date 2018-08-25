@@ -34,19 +34,17 @@ class TranslationDataset(torch.utils.data.Dataset):
         src_insts=None, tgt_insts=None):
 
         assert src_insts
+        assert not tgt_insts or (len(src_insts) == len(tgt_insts))
+
         src_idx2word = {idx:word for word, idx in src_word2idx.items()}
-        self._src_insts = src_insts
         self._src_word2idx = src_word2idx
         self._src_idx2word = src_idx2word
+        self._src_insts = src_insts
 
-        if tgt_insts:
-            assert len(src_insts) == len(tgt_insts)
-            tgt_idx2word = {idx:word for word, idx in tgt_word2idx.items()}
-            self._tgt_insts = tgt_insts
-            self._tgt_word2idx = tgt_word2idx
-            self._tgt_idx2word = tgt_idx2word
-        else:
-            self._tgt_insts = None
+        tgt_idx2word = {idx:word for word, idx in tgt_word2idx.items()}
+        self._tgt_word2idx = tgt_word2idx
+        self._tgt_idx2word = tgt_idx2word
+        self._tgt_insts = tgt_insts
 
     @property
     def n_insts(self):
