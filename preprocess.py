@@ -62,8 +62,8 @@ def build_vocab_idx(word_insts, min_word_count):
     return word2idx
 
 def convert_instance_to_idx_seq(word_insts, word2idx):
-    '''Word mapping to idx'''
-    return [[word2idx[w] if w in word2idx else Constants.UNK for w in s] for s in word_insts]
+    ''' Mapping words to idx sequence. '''
+    return [[word2idx.get(w, Constants.UNK) for w in s] for s in word_insts]
 
 def main():
     ''' Main function '''
