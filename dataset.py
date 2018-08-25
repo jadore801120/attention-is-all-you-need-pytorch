@@ -45,6 +45,8 @@ class TranslationDataset(torch.utils.data.Dataset):
             self._tgt_insts = tgt_insts
             self._tgt_word2idx = tgt_word2idx
             self._tgt_idx2word = tgt_idx2word
+        else:
+            self._tgt_insts = None
 
     @property
     def n_insts(self):
