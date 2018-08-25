@@ -24,7 +24,7 @@ If there is any suggestion or error, feel free to fire an issue to let me know. 
 
 # Requirement
 - python 3.4+
-- pytorch 0.2.0
+- pytorch 0.4.1+
 - tqdm
 - numpy
 
