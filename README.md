@@ -24,7 +24,7 @@ If there is any suggestion or error, feel free to fire an issue to let me know. 
 
 # Requirement
 - python 3.4+
-- pytorch 0.2.0
+- pytorch 0.4.1+
 - tqdm
 - numpy
 
@@ -71,7 +71,7 @@ python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode b
 
 ### 3) Test the model
 ```bash
-python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok
+python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok -no_cuda
 ```
 ---
 # Performance
