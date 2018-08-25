@@ -36,6 +36,10 @@ class Beam():
         "Get the backpointers for the current timestep."
         return self.prev_ks[-1]
 
+    @property
+    def done(self):
+        return self._done
+
     def advance(self, word_lk):
         "Update beam status and check if finished or not."
         num_words = word_lk.size(1)
