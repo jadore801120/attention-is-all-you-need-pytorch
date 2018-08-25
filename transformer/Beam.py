@@ -9,25 +9,23 @@ import torch
 import numpy as np
 import transformer.Constants as Constants
 
-class Beam(object):
-    ''' Store the neccesary info for beam search. '''
+class Beam():
+    ''' Store the necessary info for beam search. '''
 
-    def __init__(self, size, cuda=False):
+    def __init__(self, size, device=False):
 
         self.size = size
-        self.done = False
-
-        self.tt = torch.cuda if cuda else torch
+        self._done = False
 
         # The score for each translation on the beam.
-        self.scores = self.tt.FloatTensor(size).zero_()
+        self.scores = torch.zeros(size, dtype=torch.float, device=device)
         self.all_scores = []
 
         # The backpointers at each time-step.
         self.prev_ks = []
 
         # The outputs at each time-step.
-        self.next_ys = [self.tt.LongTensor(size).fill_(Constants.PAD)]
+        self.next_ys = [torch.full(size, Constants.PAD, dtype=torch.long, device=device)]
         self.next_ys[0][0] = Constants.BOS
 
     def get_current_state(self):
@@ -39,7 +37,7 @@ class Beam(object):
         return self.prev_ks[-1]
 
     def advance(self, word_lk):
-        "Update the status and check for finished or not."
+        "Update beam status and check if finished or not."
         num_words = word_lk.size(1)
 
         # Sum the previous scores.
@@ -64,10 +62,10 @@ class Beam(object):
 
         # End condition is when top-of-beam is EOS.
         if self.next_ys[-1][0] == Constants.EOS:
-            self.done = True
+            self._done = True
             self.all_scores.append(self.scores)
 
-        return self.done
+        return self._done
 
     def sort_scores(self):
         "Sort the scores."
