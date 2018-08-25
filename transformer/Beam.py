@@ -58,14 +58,14 @@ class Beam():
         self.all_scores.append(self.scores)
         self.scores = best_scores
 
-        # bestScoresId is flattened beam x word array, so calculate which
-        # word and beam each score came from
+        # bestScoresId is flattened as a (beam x word) array,
+        # so we need to calculate which word and beam each score came from
         prev_k = best_scores_id / num_words
         self.prev_ks.append(prev_k)
         self.next_ys.append(best_scores_id - prev_k * num_words)
 
         # End condition is when top-of-beam is EOS.
-        if self.next_ys[-1][0] == Constants.EOS:
+        if self.next_ys[-1][0].item() == Constants.EOS:
             self._done = True
             self.all_scores.append(self.scores)
 
@@ -94,21 +94,10 @@ class Beam():
         return dec_seq
 
     def get_hypothesis(self, k):
-        """
-        Walk back to construct the full hypothesis.
-
-        Parameters.
-
-             * `k` - the position in the beam to construct.
-
-         Returns.
-
-            1. The hypothesis
-            2. The attention at each time step.
-        """
+        """ Walk back to construct the full hypothesis. """
         hyp = []
         for j in range(len(self.prev_ks) - 1, -1, -1):
             hyp.append(self.next_ys[j+1][k])
             k = self.prev_ks[j][k]
 
-        return hyp[::-1]
+        return list(map(lambda x: x.item(), hyp[::-1]))
