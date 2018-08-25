@@ -10,7 +10,7 @@ import numpy as np
 import transformer.Constants as Constants
 
 class Beam():
-    ''' Store the necessary info for beam search. '''
+    ''' Beam search '''
 
     def __init__(self, size, device=False):
 
