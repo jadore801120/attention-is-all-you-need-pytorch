@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from transformer.Models import Transformer
 from transformer.Beam import Beam
@@ -35,7 +36,7 @@ class Translator(object):
         model.load_state_dict(checkpoint['model'])
         print('[Info] Trained model state loaded.')
 
-        model.word_prob_prj = nn.LogSoftmax()
+        model.word_prob_prj = nn.LogSoftmax(dim=1)
 
         model = model.to(self.device)
 
@@ -139,7 +140,7 @@ class Translator(object):
         def predict_word(dec_seq, dec_pos, src_seq, enc_output, n_active_inst, n_bm):
             dec_output, *_ = self.model.decoder(dec_seq, dec_pos, src_seq, enc_output)
             dec_output = dec_output[:, -1, :]  # Pick the last step: (bh * bm) * d_h
-            word_prob = self.model.word_prob_prj(self.model.tgt_word_prj(dec_output))
+            word_prob = F.log_softmax(self.model.tgt_word_prj(dec_output), dim=1)
             word_prob = word_prob.view(n_active_inst, n_bm, -1)
 
             return word_prob
