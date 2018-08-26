@@ -65,7 +65,7 @@ python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/mult
 
 ### 2) Train the model
 ```bash
-python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode best -proj_share_weight 
+python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode best -proj_share_weight -label_smoothing
 ```
 > If your source and target language share one common vocabulary, use the `-embs_share_weight` flag to enable the model to share source/target word embedding. 
 
@@ -104,7 +104,6 @@ python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src d
 - coming soon.
 ---
 # TODO
-  - Label smoothing
   - Evaluation on the generated text.
   - Attention weight plot.
 ---
