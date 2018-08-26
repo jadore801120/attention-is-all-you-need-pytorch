@@ -115,7 +115,7 @@ class Translator(object):
             dec_pos = prepare_beam_dec_pos(len_dec_seq, n_active_inst, n_bm)
             word_prob = predict_word(dec_seq, dec_pos, src_seq, enc_output, n_active_inst, n_bm)
 
-            # Update the predicted word prob information into beam object
+            # Update the beam with predicted word prob information and collect incomplete instances
             active_inst_idx_list = collect_active_inst_idx_list(
                 inst_dec_beams, word_prob, inst_idx_to_position_map)
 
@@ -160,6 +160,6 @@ class Translator(object):
                 src_seq, src_enc, inst_idx_to_position_map = collate_active_info(
                     src_seq, src_enc, inst_idx_to_position_map, active_inst_idx_list)
 
-        all_hyp, all_scores = collect_hypothesis_and_scores(inst_dec_beams, self.opt.n_best)
+        batch_hyp, batch_scores = collect_hypothesis_and_scores(inst_dec_beams, self.opt.n_best)
 
-        return all_hyp, all_scores
+        return batch_hyp, batch_scores
