@@ -177,7 +177,6 @@ class Transformer(nn.Module):
             n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,
             dropout=dropout)
 
-        self.x_logit_scale = (d_model ** -0.5)
         self.tgt_word_prj = nn.Linear(d_model, n_tgt_vocab, bias=False)
         nn.init.xavier_normal_(self.tgt_word_prj.weight)
 
@@ -188,6 +187,9 @@ class Transformer(nn.Module):
         if tgt_emb_prj_weight_sharing:
             # Share the weight matrix between target word embedding & the final logit dense layer
             self.tgt_word_prj.weight = self.decoder.tgt_word_emb.weight
+            self.x_logit_scale = (d_model ** -0.5)
+        else:
+            self.x_logit_scale = 1.
 
         if emb_src_tgt_weight_sharing:
             # Share the weight matrix between source & target word embeddings
