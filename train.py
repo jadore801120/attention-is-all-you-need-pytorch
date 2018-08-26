@@ -9,6 +9,7 @@ import time
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 import transformer.Constants as Constants
@@ -16,20 +17,12 @@ from dataset import TranslationDataset, paired_collate_fn
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
 
-def get_performance(crit, pred, gold, smoothing=False, n_class=None):
+def cal_performance(pred, gold, smoothing=False):
     ''' Apply label smoothing if needed '''
 
-    # TODO: Add smoothing
-    if smoothing:
-        assert bool(n_class)
-        eps = 0.1
-        gold = gold * (1 - eps) + (1 - gold) * eps / n_class
-        raise NotImplementedError
-
-    loss = crit(pred, gold.contiguous().view(-1))
+    loss = cal_loss(pred, gold, smoothing)
 
     pred = pred.max(1)[1]
-
     gold = gold.contiguous().view(-1)
     non_pad_mask = gold.ne(Constants.PAD)
     n_correct = pred.eq(gold)
@@ -37,7 +30,27 @@ def get_performance(crit, pred, gold, smoothing=False, n_class=None):
 
     return loss, n_correct
 
-def train_epoch(model, training_data, crit, optimizer, device):
+
+def cal_loss(pred, gold, smoothing):
+    if smoothing:
+        eps=0.1
+        n_class = pred.size(2)
+
+        one_hot = torch.zeros_like(pred).scatter(2, gold, 1)
+        one_hot = one_hot * (1 - eps) + (1 - one_hot) * eps / (n_class - 1)
+        log_prb = F.log_softmax(pred, dim=2)
+
+        non_pad_mask = gold.ne(Constants.PAD)
+        loss = -(one_hot * log_prb).sum(dim=2)
+        loss = loss.masked_select(non_pad_mask).sum().item()  # average later
+    else:
+        gold = gold.contiguous().view(-1)
+        loss = F.cross_entropy(
+            pred, gold, ignore_index=Constants.PAD, reduction='sum')
+    return loss
+
+
+def train_epoch(model, training_data, optimizer, device, smoothing):
     ''' Epoch operation in training phase'''
 
     model.train()
@@ -59,7 +72,7 @@ def train_epoch(model, training_data, crit, optimizer, device):
         pred = model(src_seq, src_pos, tgt_seq, tgt_pos)
 
         # backward
-        loss, n_correct = get_performance(crit, pred, gold)
+        loss, n_correct = cal_performance(pred, gold, smoothing=smoothing)
         loss.backward()
 
         # update parameters
@@ -77,7 +90,7 @@ def train_epoch(model, training_data, crit, optimizer, device):
     accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
-def eval_epoch(model, validation_data, crit, device):
+def eval_epoch(model, validation_data, device):
     ''' Epoch operation in evaluation phase '''
 
     model.eval()
@@ -97,7 +110,7 @@ def eval_epoch(model, validation_data, crit, device):
 
             # forward
             pred = model(src_seq, src_pos, tgt_seq, tgt_pos)
-            loss, n_correct = get_performance(crit, pred, gold)
+            loss, n_correct = cal_performance(pred, gold, smoothing=False)
 
             # note keeping
             total_loss += loss.item()
@@ -111,7 +124,7 @@ def eval_epoch(model, validation_data, crit, device):
     accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
-def train(model, training_data, validation_data, crit, optimizer, device, opt):
+def train(model, training_data, validation_data, optimizer, device, opt):
     ''' Start training '''
 
     log_train_file = None
@@ -133,14 +146,15 @@ def train(model, training_data, validation_data, crit, optimizer, device, opt):
         print('[ Epoch', epoch_i, ']')
 
         start = time.time()
-        train_loss, train_accu = train_epoch(model, training_data, crit, optimizer, device)
+        train_loss, train_accu = train_epoch(
+            model, training_data, optimizer, device, smoothing=opt.label_smoothing)
         print('  - (Training)   ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
               'elapse: {elapse:3.3f} min'.format(
                   ppl=math.exp(min(train_loss, 100)), accu=100*train_accu,
                   elapse=(time.time()-start)/60))
 
         start = time.time()
-        valid_loss, valid_accu = eval_epoch(model, validation_data, crit, device)
+        valid_loss, valid_accu = eval_epoch(model, validation_data, device)
         print('  - (Validation) ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
                 'elapse: {elapse:3.3f} min'.format(
                     ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu,
@@ -201,6 +215,7 @@ def main():
     parser.add_argument('-save_mode', type=str, choices=['all', 'best'], default='best')
 
     parser.add_argument('-no_cuda', action='store_true')
+    parser.add_argument('-label_smoothing', action='store_true')
 
     opt = parser.parse_args()
     opt.cuda = not opt.no_cuda
@@ -222,6 +237,7 @@ def main():
 
     print(opt)
 
+    device = torch.device('cuda' if opt.cuda else 'cpu')
     transformer = Transformer(
         opt.src_vocab_size,
         opt.tgt_vocab_size,
@@ -235,9 +251,7 @@ def main():
         d_inner=opt.d_inner_hid,
         n_layers=opt.n_layers,
         n_head=opt.n_head,
-        dropout=opt.dropout)
-
-    #print(transformer)
+        dropout=opt.dropout).to(device)
 
     optimizer = ScheduledOptim(
         optim.Adam(
@@ -245,23 +259,7 @@ def main():
             betas=(0.9, 0.98), eps=1e-09),
         opt.d_model, opt.n_warmup_steps)
 
-
-    def get_criterion(vocab_size):
-        ''' With PAD token zero weight '''
-        weight = torch.ones(vocab_size)
-        weight[Constants.PAD] = 0
-        return nn.CrossEntropyLoss(weight, size_average=False)
-
-    crit = get_criterion(training_data.dataset.tgt_vocab_size)
-
-    device = torch.device('cuda' if opt.cuda else 'cpu')
-
-
-    if opt.cuda:
-        transformer = transformer.to(device)
-        crit = crit.to(device)
-
-    train(transformer, training_data, validation_data, crit, optimizer, device ,opt)
+    train(transformer, training_data, validation_data, optimizer, device ,opt)
 
 
 def prepare_dataloaders(data, opt):
