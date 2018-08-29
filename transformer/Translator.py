@@ -69,7 +69,7 @@ class Translator(object):
             # so the decoder will not run on completed sentences.
             n_prev_active_inst = len(inst_idx_to_position_map)
             active_inst_idx = [inst_idx_to_position_map[k] for k in active_inst_idx_list]
-            active_inst_idx = torch.LongTensor(active_inst_idx, device=self.device)
+            active_inst_idx = torch.LongTensor(active_inst_idx).to(self.device)
 
             active_src_seq = collect_active_part(src_seq, active_inst_idx, n_prev_active_inst, n_bm)
             active_src_enc = collect_active_part(src_enc, active_inst_idx, n_prev_active_inst, n_bm)
@@ -133,6 +133,7 @@ class Translator(object):
 
         with torch.no_grad():
             #-- Encode
+            src_seq, src_pos = src_seq.to(self.device), src_pos.to(self.device)
             src_enc, *_ = self.model.encoder(src_seq, src_pos)
 
             #-- Repeat data for beam search

@@ -55,7 +55,6 @@ def main():
         collate_fn=collate_fn)
 
     translator = Translator(opt)
-    translator.model.eval()
 
     with open(opt.output, 'w') as f:
         for batch in tqdm(test_loader, mininterval=2, desc='  - (Test)', leave=False):
