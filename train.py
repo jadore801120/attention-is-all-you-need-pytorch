@@ -220,7 +220,9 @@ def main():
     parser.add_argument('-label_smoothing', action='store_true')
 
     opt = parser.parse_args()
+
     opt.cuda = not opt.no_cuda
+    print(opt.cuda)
     opt.d_word_vec = opt.d_model
 
     #========= Loading Dataset =========#
