@@ -51,7 +51,7 @@
         <entry file="file://$PROJECT_DIR$/transformer/Models.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="858">
-              <caret line="88" column="34" selection-start-line="88" selection-start-column="34" selection-end-line="88" selection-end-column="34" />
+              <caret line="88" column="54" selection-start-line="88" selection-start-column="54" selection-end-line="88" selection-end-column="54" />
               <folding>
                 <element signature="e#37#49#0" expanded="true" />
               </folding>
@@ -199,7 +199,7 @@
     <entry file="file://$PROJECT_DIR$/transformer/Models.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="858">
-          <caret line="88" column="34" selection-start-line="88" selection-start-column="34" selection-end-line="88" selection-end-column="34" />
+          <caret line="88" column="54" selection-start-line="88" selection-start-column="54" selection-end-line="88" selection-end-column="54" />
           <folding>
             <element signature="e#37#49#0" expanded="true" />
           </folding>

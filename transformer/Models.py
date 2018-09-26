@@ -86,6 +86,7 @@ class Encoder(nn.Module):
         # -- Forward
         enc_output = self.src_word_emb(src_seq) + self.position_enc(src_pos)
 
+        print("ENCODER BEGIN OUT : ", enc_output.shape)
         print("\n\n\n\n ->  -> -> Encoder ")
         for enc_layer in self.layer_stack:
 
