@@ -24,7 +24,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b482eb80-3b68-42d5-902b-adf5eda2cb1d" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/transformer/Models.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/Models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -35,11 +35,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="train.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="train.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="377">
-              <caret line="222" lean-forward="true" selection-start-line="222" selection-end-line="222" />
+            <state relative-caret-position="163">
+              <caret line="198" column="58" selection-start-line="198" selection-start-column="58" selection-end-line="198" selection-end-column="58" />
               <folding>
                 <element signature="e#52#67#0" expanded="true" />
               </folding>
@@ -47,7 +47,18 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Models.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="dataset.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/dataset.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-68">
+              <folding>
+                <element signature="e#0#18#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/transformer/Models.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="735">
@@ -75,15 +86,20 @@
       </file>
     </leaf>
   </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>TranslationDataset</find>
+    </findStrings>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/train.py" />
         <option value="$PROJECT_DIR$/transformer/Layers.py" />
         <option value="$PROJECT_DIR$/transformer/Models.py" />
+        <option value="$PROJECT_DIR$/train.py" />
       </list>
     </option>
   </component>
@@ -176,16 +192,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/train.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="377">
-          <caret line="222" lean-forward="true" selection-start-line="222" selection-end-line="222" />
-          <folding>
-            <element signature="e#52#67#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/transformer/Constants.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
@@ -202,6 +208,25 @@
           <caret line="87" column="34" selection-start-line="87" selection-start-column="34" selection-end-line="87" selection-end-column="34" />
           <folding>
             <element signature="e#37#49#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dataset.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-68">
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/train.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="163">
+          <caret line="198" column="58" selection-start-line="198" selection-start-column="58" selection-end-line="198" selection-end-column="58" />
+          <folding>
+            <element signature="e#52#67#0" expanded="true" />
           </folding>
         </state>
       </provider>
