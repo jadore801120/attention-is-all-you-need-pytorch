@@ -1,10 +1,7 @@
-'''
-This script handling the training process.
-'''
-
-import argparse
+"""This script handling the training process."""
 import math
 import time
+import os
 
 from tqdm import tqdm
 import torch
@@ -16,9 +13,42 @@ from dataset import TranslationDataset, paired_collate_fn
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
 
-def cal_performance(pred, gold, smoothing=False):
-    ''' Apply label smoothing if needed '''
 
+class OPT(object):
+    def __init__(self):
+        self.data = "data/multi30k.pkl"
+        self.epoch = 10
+        self.batch_size = 64
+        self.d_model = 512
+        self.d_inner_hid = 2048
+        self.d_k = 64
+        self.d_v = 64
+        self.n_head = 8
+        self.n_layers = 6
+        self.n_warmup_steps = 4000
+        self.dropout = 0.1
+        self.embs_share_weight = False
+        self.proj_share_weight = False
+        self.log = "./log"
+        self.save_model = True
+        self.save_mode = 'best'  # choices=['all', 'best']
+        self.no_cuda = True
+        self.label_smoothing = False
+        self.cuda = not self.no_cuda
+        self.d_word_vec = self.d_model
+
+        if not os.path.exists(self.log):
+            os.makedirs(self.log)
+
+
+def cal_performance(pred, gold, smoothing=False):
+    """
+    Apply label smoothing if needed
+    :param pred:
+    :param gold:
+    :param smoothing:
+    :return:
+    """
     loss = cal_loss(pred, gold, smoothing)
 
     pred = pred.max(1)[1]
@@ -31,8 +61,13 @@ def cal_performance(pred, gold, smoothing=False):
 
 
 def cal_loss(pred, gold, smoothing):
-    ''' Calculate cross entropy loss, apply label smoothing if needed. '''
-
+    """
+    Calculate cross entropy loss, apply label smoothing if needed.
+    :param pred:
+    :param gold:
+    :param smoothing:
+    :return:
+    """
     gold = gold.contiguous().view(-1)
 
     if smoothing:
@@ -53,18 +88,21 @@ def cal_loss(pred, gold, smoothing):
 
 
 def train_epoch(model, training_data, optimizer, device, smoothing):
-    ''' Epoch operation in training phase'''
-
-    model.train()
-
+    """
+    Epoch operation in training phase
+    :param model:
+    :param training_data:
+    :param optimizer:
+    :param device:
+    :param smoothing:
+    :return:
+    """
+    model.train()  # nn.Model.train()将本层及子层的training设定为True # nn.Model.eval() # 将本层及子层的training设定为False
     total_loss = 0
     n_word_total = 0
     n_word_correct = 0
 
-    for batch in tqdm(
-            training_data, mininterval=2,
-            desc='  - (Training)   ', leave=False):
-
+    for batch in tqdm(training_data, mininterval=2, desc='  - (Training)   ', leave=False):
         # prepare data
         src_seq, src_pos, tgt_seq, tgt_pos = map(lambda x: x.to(device), batch)
         gold = tgt_seq[:, 1:]
@@ -92,9 +130,15 @@ def train_epoch(model, training_data, optimizer, device, smoothing):
     accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
-def eval_epoch(model, validation_data, device):
-    ''' Epoch operation in evaluation phase '''
 
+def eval_epoch(model, validation_data, device):
+    """
+    Epoch operation in evaluation phase
+    :param model:
+    :param validation_data:
+    :param device:
+    :return:
+    """
     model.eval()
 
     total_loss = 0
@@ -102,9 +146,7 @@ def eval_epoch(model, validation_data, device):
     n_word_correct = 0
 
     with torch.no_grad():
-        for batch in tqdm(
-                validation_data, mininterval=2,
-                desc='  - (Validation) ', leave=False):
+        for batch in tqdm(validation_data, mininterval=2, desc='  - (Validation) ', leave=False):
 
             # prepare data
             src_seq, src_pos, tgt_seq, tgt_pos = map(lambda x: x.to(device), batch)
@@ -126,15 +168,17 @@ def eval_epoch(model, validation_data, device):
     accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
 
-def train(model, training_data, validation_data, optimizer, device, opt):
-    ''' Start training '''
 
+def train(model, training_data, validation_data, optimizer, device, opt):
+    """
+    Start training
+    """
     log_train_file = None
     log_valid_file = None
 
     if opt.log:
-        log_train_file = opt.log + '.train.log'
-        log_valid_file = opt.log + '.valid.log'
+        log_train_file = '{}/train.log'.format(opt.log)
+        log_valid_file = '{}/valid.log'.format(opt.log)
 
         print('[Info] Training performance will be written to file: {} and {}'.format(
             log_train_file, log_valid_file))
@@ -148,27 +192,27 @@ def train(model, training_data, validation_data, optimizer, device, opt):
         print('[ Epoch', epoch_i, ']')
 
         start = time.time()
-        train_loss, train_accu = train_epoch(
-            model, training_data, optimizer, device, smoothing=opt.label_smoothing)
-        print('  - (Training)   ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
-              'elapse: {elapse:3.3f} min'.format(
-                  ppl=math.exp(min(train_loss, 100)), accu=100*train_accu,
-                  elapse=(time.time()-start)/60))
+        train_loss, train_accu = train_epoch(model, training_data, optimizer, device, smoothing=opt.label_smoothing)
+        print('  - (Training)  ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, elapse: {elapse:3.3f} min'.format(
+            ppl=math.exp(min(train_loss, 100)),
+            accu=100*train_accu,
+            elapse=(time.time()-start)/60)
+        )
 
         start = time.time()
         valid_loss, valid_accu = eval_epoch(model, validation_data, device)
-        print('  - (Validation) ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
-                'elapse: {elapse:3.3f} min'.format(
-                    ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu,
-                    elapse=(time.time()-start)/60))
+        print('  - (Validation) ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, elapse: {elapse:3.3f} min'.format(
+            ppl=math.exp(min(valid_loss, 100)),
+            accu=100*valid_accu,
+            elapse=(time.time()-start)/60)
+        )
 
         valid_accus += [valid_accu]
 
         model_state_dict = model.state_dict()
-        checkpoint = {
-            'model': model_state_dict,
-            'settings': opt,
-            'epoch': epoch_i}
+        checkpoint = {'model': model_state_dict,
+                      'settings': opt,
+                      'epoch': epoch_i}
 
         if opt.save_model:
             if opt.save_mode == 'all':
@@ -181,49 +225,48 @@ def train(model, training_data, validation_data, optimizer, device, opt):
                     print('    - [Info] The checkpoint file has been updated.')
 
         if log_train_file and log_valid_file:
+
             with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
+
                 log_tf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
                     epoch=epoch_i, loss=train_loss,
                     ppl=math.exp(min(train_loss, 100)), accu=100*train_accu))
+
                 log_vf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
                     epoch=epoch_i, loss=valid_loss,
                     ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu))
 
+
+def prepare_dataloaders(data, opt):
+    # ========= Preparing DataLoader =========#
+    train_loader = torch.utils.data.DataLoader(
+        dataset=TranslationDataset(src_word2idx=data['dict']['src'],
+                                   tgt_word2idx=data['dict']['tgt'],
+                                   src_insts=data['train']['src'],
+                                   tgt_insts=data['train']['tgt']),
+        num_workers=2,
+        batch_size=opt.batch_size,
+        collate_fn=paired_collate_fn,
+        shuffle=True)
+
+    valid_loader = torch.utils.data.DataLoader(
+        dataset=TranslationDataset(src_word2idx=data['dict']['src'],
+                                   tgt_word2idx=data['dict']['tgt'],
+                                   src_insts=data['valid']['src'],
+                                   tgt_insts=data['valid']['tgt']),
+        num_workers=2,
+        batch_size=opt.batch_size,
+        collate_fn=paired_collate_fn)
+    return train_loader, valid_loader
+
+
 def main():
-    ''' Main function '''
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-data', required=True)
-
-    parser.add_argument('-epoch', type=int, default=10)
-    parser.add_argument('-batch_size', type=int, default=64)
-
-    #parser.add_argument('-d_word_vec', type=int, default=512)
-    parser.add_argument('-d_model', type=int, default=512)
-    parser.add_argument('-d_inner_hid', type=int, default=2048)
-    parser.add_argument('-d_k', type=int, default=64)
-    parser.add_argument('-d_v', type=int, default=64)
-
-    parser.add_argument('-n_head', type=int, default=8)
-    parser.add_argument('-n_layers', type=int, default=6)
-    parser.add_argument('-n_warmup_steps', type=int, default=4000)
-
-    parser.add_argument('-dropout', type=float, default=0.1)
-    parser.add_argument('-embs_share_weight', action='store_true')
-    parser.add_argument('-proj_share_weight', action='store_true')
-
-    parser.add_argument('-log', default=None)
-    parser.add_argument('-save_model', default=None)
-    parser.add_argument('-save_mode', type=str, choices=['all', 'best'], default='best')
-
-    parser.add_argument('-no_cuda', action='store_true')
-    parser.add_argument('-label_smoothing', action='store_true')
-
-    opt = parser.parse_args()
-    opt.cuda = not opt.no_cuda
-    opt.d_word_vec = opt.d_model
-
-    #========= Loading Dataset =========#
+    """
+    Main function
+    :return:
+    """
+    opt = OPT()
+    # ========= Loading Dataset =========#
     data = torch.load(opt.data)
     opt.max_token_seq_len = data['settings'].max_token_seq_len
 
@@ -232,18 +275,16 @@ def main():
     opt.src_vocab_size = training_data.dataset.src_vocab_size
     opt.tgt_vocab_size = training_data.dataset.tgt_vocab_size
 
-    #========= Preparing Model =========#
+    # ========= Preparing Model =========#
     if opt.embs_share_weight:
         assert training_data.dataset.src_word2idx == training_data.dataset.tgt_word2idx, \
             'The src/tgt word2idx table are different but asked to share word embedding.'
 
-    print(opt)
-
     device = torch.device('cuda' if opt.cuda else 'cpu')
     transformer = Transformer(
-        opt.src_vocab_size,
-        opt.tgt_vocab_size,
-        opt.max_token_seq_len,
+        n_src_vocab=opt.src_vocab_size,
+        n_tgt_vocab=opt.tgt_vocab_size,
+        len_max_seq=opt.max_token_seq_len,
         tgt_emb_prj_weight_sharing=opt.proj_share_weight,
         emb_src_tgt_weight_sharing=opt.embs_share_weight,
         d_k=opt.d_k,
@@ -258,35 +299,13 @@ def main():
     optimizer = ScheduledOptim(
         optim.Adam(
             filter(lambda x: x.requires_grad, transformer.parameters()),
-            betas=(0.9, 0.98), eps=1e-09),
-        opt.d_model, opt.n_warmup_steps)
+            betas=(0.9, 0.98),
+            eps=1e-09),
+        opt.d_model,
+        opt.n_warmup_steps
+    )
 
-    train(transformer, training_data, validation_data, optimizer, device ,opt)
-
-
-def prepare_dataloaders(data, opt):
-    # ========= Preparing DataLoader =========#
-    train_loader = torch.utils.data.DataLoader(
-        TranslationDataset(
-            src_word2idx=data['dict']['src'],
-            tgt_word2idx=data['dict']['tgt'],
-            src_insts=data['train']['src'],
-            tgt_insts=data['train']['tgt']),
-        num_workers=2,
-        batch_size=opt.batch_size,
-        collate_fn=paired_collate_fn,
-        shuffle=True)
-
-    valid_loader = torch.utils.data.DataLoader(
-        TranslationDataset(
-            src_word2idx=data['dict']['src'],
-            tgt_word2idx=data['dict']['tgt'],
-            src_insts=data['valid']['src'],
-            tgt_insts=data['valid']['tgt']),
-        num_workers=2,
-        batch_size=opt.batch_size,
-        collate_fn=paired_collate_fn)
-    return train_loader, valid_loader
+    train(transformer, training_data, validation_data, optimizer, device, opt)
 
 
 if __name__ == '__main__':
