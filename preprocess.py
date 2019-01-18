@@ -8,7 +8,7 @@ def read_instances_from_file(inst_file, max_sent_len, keep_case):
 
     word_insts = []
     trimmed_sent_count = 0
-    with open(inst_file) as f:
+    with open(inst_file, encoding='utf-8') as f:
         for sent in f:
             if not keep_case:
                 sent = sent.lower()
