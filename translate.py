@@ -56,7 +56,7 @@ def main():
 
     translator = Translator(opt)
 
-    with open(opt.output, 'w') as f:
+    with open(opt.output, 'w', encoding='utf-8') as f:
         for batch in tqdm(test_loader, mininterval=2, desc='  - (Test)', leave=False):
             all_hyp, all_scores = translator.translate_batch(*batch)
             for idx_seqs in all_hyp:
