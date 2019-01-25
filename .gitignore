@@ -1,3 +1,14 @@
+# Pycharm
+.idea/*
+data/*
+venv3/*
+*.perl
+*.en
+*.de
+*.chkpt
+*.txt
+README_incomplete_data.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

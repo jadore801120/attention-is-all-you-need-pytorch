@@ -65,14 +65,21 @@ python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/mult
 
 ### 2) Train the model
 ```bash
-python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode best -proj_share_weight -label_smoothing
+python train.py -data data/multi30k.atok.low.pt -save_model trained_en-de -save_mode best -proj_share_weight -label_smoothing
 ```
 > If your source and target language share one common vocabulary, use the `-embs_share_weight` flag to enable the model to share source/target word embedding. 
 
 ### 3) Test the model
 ```bash
-python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok -no_cuda
+python translate.py -output pred_en-de.txt -model trained_en-de.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok -no_cuda
 ```
+
+### 4) Evaluate the model
+```bash
+python evaluate.py -hyp pred_en-de.txt -ref data/multi30k/test.de -out scores_en-de.txt
+```
+> Here we have BLEU, GLEU and WER. Check out [NLPMetrics](https://github.com/gcunhase/NLPMetrics) for more evaluation metrics
+
 ---
 # Performance
 ## Training
@@ -95,7 +102,6 @@ python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src d
 - coming soon.
 ---
 # TODO
-  - Evaluation on the generated text.
   - Attention weight plot.
 ---
 # Acknowledgement
