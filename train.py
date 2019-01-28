@@ -15,6 +15,8 @@ import transformer.Constants as Constants
 from dataset import TranslationDataset, paired_collate_fn
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
+from timeit import default_timer as timer
+
 
 def cal_performance(pred, gold, smoothing=False):
     ''' Apply label smoothing if needed '''
@@ -290,4 +292,7 @@ def prepare_dataloaders(data, opt):
 
 
 if __name__ == '__main__':
+    start_time = timer()
     main()
+    total_time = timer() - start_time
+    print("Program ran for {} hours".format())
