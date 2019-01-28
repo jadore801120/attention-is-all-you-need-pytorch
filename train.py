@@ -295,4 +295,4 @@ if __name__ == '__main__':
     start_time = timer()
     main()
     total_time = timer() - start_time
-    print("Program ran for {} hours".format())
+    print("Program ran for {:.4f} hours".format(total_time/3600))

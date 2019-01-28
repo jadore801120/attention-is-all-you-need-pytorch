@@ -56,7 +56,7 @@ class TextScore:
         return scores
 
     def score_one_from_file(self, ref_file, hyp_file, scores_file, score_type="BLEU", average_prec="corpus"):
-        """ Calculates score of file where each re line is a text corresponding to the same hyp line
+        """ Calculates score of file where each line is a text corresponding to the same hyp line
         Doesn't treat cases of multiple references for the same hypotheses
 
         :param ref_file: text file of reference sentences
@@ -81,12 +81,18 @@ class TextScore:
         real_num_sentences = 0
         for i in range(0, num_sentences):
             if len(reference[i].strip()) != 0 or len(hypothesis[i].strip()) != 0:
-                # Previous: split line which has multiple sentences into words
-                # ref, hypo = reference[i].lower().split(), hypothesis[i].lower().split()
-                # Current: added a for loop to separate sentences in each line
+                # Hyptheseis ends with </s>
                 hypothesis_i = hypothesis[i].split('</s>')[0]
-                sentences_ref = nltk.sent_tokenize(reference[i].lower())
-                sentence_hyp = nltk.sent_tokenize(hypothesis_i.lower())
+                # Strip string of punctuation marks
+                table = str.maketrans("!?.,-|", 6*" ")
+                sentences_ref = reference[i].translate(table)
+                sentence_hyp = hypothesis_i.translate(table)
+                # Don't consider <unk> in hyp
+                sentence_hyp = sentence_hyp.replace('<unk>', ' ')
+                # Get sentences (if more than 1 per line)
+                sentences_ref = nltk.sent_tokenize(sentences_ref.lower())
+                sentence_hyp = nltk.sent_tokenize(sentence_hyp.lower())
+                # Separate sentences in each line
                 for sent_ref, sent_hyp in zip(sentences_ref, sentence_hyp):
                     ref, hypo = sent_ref.split(), sent_hyp.split()
                     list_of_references.append([ref])
