@@ -1,13 +1,13 @@
 # Pycharm
 .idea/*
 data/*
-venv3/*
+venv*/*
 *.perl
 *.en
 *.de
 *.chkpt
 *.txt
-README_incomplete_data.md
+recurrent_models/logs*/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

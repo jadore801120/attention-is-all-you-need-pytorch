@@ -16,6 +16,7 @@ from dataset import TranslationDataset, paired_collate_fn
 from transformer.Models import Transformer
 from transformer.Optim import ScheduledOptim
 from timeit import default_timer as timer
+import os
 
 
 def cal_performance(pred, gold, smoothing=False):
@@ -196,6 +197,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-data', required=True)
+    parser.add_argument('-results_dir', required=False, default='./')
 
     parser.add_argument('-epoch', type=int, default=10)
     parser.add_argument('-batch_size', type=int, default=64)
@@ -224,6 +226,10 @@ def main():
     opt = parser.parse_args()
     opt.cuda = not opt.no_cuda
     opt.d_word_vec = opt.d_model
+
+    # = Ensure results directory exists =#
+    if not os.path.exists(opt.results_dir):
+        os.mkdir(opt.results_dir)
 
     #========= Loading Dataset =========#
     data = torch.load(opt.data)
