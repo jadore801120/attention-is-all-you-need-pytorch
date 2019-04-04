@@ -1,3 +1,14 @@
+# Pycharm
+.idea/*
+data/*
+venv*/*
+*.perl
+*.en
+*.de
+*.chkpt
+*.txt
+recurrent_models/logs*/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
