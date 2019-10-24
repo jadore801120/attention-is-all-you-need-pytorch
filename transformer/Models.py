@@ -1,26 +1,64 @@
-''' Define the Transformer model '''
+"""
+Define the Transformer model
+"""
 import torch
 import torch.nn as nn
 import numpy as np
 import transformer.Constants as Constants
 from transformer.Layers import EncoderLayer, DecoderLayer
+import matplotlib.pyplot as plt
+import seaborn
+seaborn.set_context(context="talk")
 
-__author__ = "Yu-Hsiang Huang"
 
 def get_non_pad_mask(seq):
     assert seq.dim() == 2
     return seq.ne(Constants.PAD).type(torch.float).unsqueeze(-1)
 
-def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
-    ''' Sinusoid position encoding table '''
 
+def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
+    """
+    Sinusoid position encoding table
+    :param n_position:
+    :param d_hid:
+    :param padding_idx:
+    :return:
+    """
+    # def cal_angle(position, hid_idx):
+    #     return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+    #
+    # def get_posi_angle_vec(position):
+    #     return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
+    # sinusoid_table = np.array([get_posi_angle_vec(pos_i) for pos_i in range(n_position)])
+    #
+    # sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
+    # sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
+    #
+    # if padding_idx is not None:
+    #     # zero vector for padding dimension
+    #     sinusoid_table[padding_idx] = 0.
+    #
+    # return torch.FloatTensor(sinusoid_table)
     def cal_angle(position, hid_idx):
-        return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+        term = hid_idx // 2
+        term1 = 2 * term
+        term2 = term1 / d_hid
+        term3 = np.power(10000, term2)
+        term4 = position / term3
+        return term4
 
     def get_posi_angle_vec(position):
-        return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
+        rets = []
+        for hid_j in range(d_hid):
+            ret = cal_angle(position, hid_j)
+            rets.append(ret)
+        return rets
 
-    sinusoid_table = np.array([get_posi_angle_vec(pos_i) for pos_i in range(n_position)])
+    sinusoid = []
+    for pos_i in range(n_position):
+        sin = get_posi_angle_vec(pos_i)
+        sinusoid.append(sin)
+    sinusoid_table = np.array(sinusoid)
 
     sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
     sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
@@ -29,11 +67,32 @@ def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
         # zero vector for padding dimension
         sinusoid_table[padding_idx] = 0.
 
+    # plt.figure(figsize=(60, 3))
+    # y值为某一维，一列
+    # x1 = np.arange(sinusoid_table.shape[0])
+    # y1 = sinusoid_table[:,0]
+    # plt.plot(x1, y1)
+    # x2 = np.arange(sinusoid_table.shape[0])
+    # y2 = sinusoid_table[:, 1]
+    # plt.plot(x2, y2)
+
+    # 某一行
+    # x1 = np.arange(sinusoid_table.shape[1])
+    # y1 = sinusoid_table[2, :]
+    # plt.plot(x1, y1)
+    # x2 = np.arange(sinusoid_table.shape[1])
+    # y2 = sinusoid_table[3, :]
+    # plt.plot(x2, y2)
     return torch.FloatTensor(sinusoid_table)
 
-def get_attn_key_pad_mask(seq_k, seq_q):
-    ''' For masking out the padding part of key sequence. '''
 
+def get_attn_key_pad_mask(seq_k, seq_q):
+    """
+    For masking out the padding part of key sequence.
+    :param seq_k:
+    :param seq_q:
+    :return:
+    """
     # Expand to fit the shape of key query attention matrix.
     len_q = seq_q.size(1)
     padding_mask = seq_k.eq(Constants.PAD)
@@ -41,9 +100,13 @@ def get_attn_key_pad_mask(seq_k, seq_q):
 
     return padding_mask
 
-def get_subsequent_mask(seq):
-    ''' For masking out the subsequent info. '''
 
+def get_subsequent_mask(seq):
+    """
+    For masking out the subsequent info.
+    :param seq:
+    :return:
+    """
     sz_b, len_s = seq.size()
     subsequent_mask = torch.triu(
         torch.ones((len_s, len_s), device=seq.device, dtype=torch.uint8), diagonal=1)
@@ -51,9 +114,11 @@ def get_subsequent_mask(seq):
 
     return subsequent_mask
 
-class Encoder(nn.Module):
-    ''' A encoder model with self attention mechanism. '''
 
+class Encoder(nn.Module):
+    """
+    A encoder model with self attention mechanism.
+    """
     def __init__(
             self,
             n_src_vocab, len_max_seq, d_word_vec,
@@ -62,18 +127,16 @@ class Encoder(nn.Module):
 
         super().__init__()
 
-        n_position = len_max_seq + 1
+        n_position = len_max_seq + 1  # TODO 增加一个padding
 
-        self.src_word_emb = nn.Embedding(
-            n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
+        self.src_word_emb = nn.Embedding(n_src_vocab, d_word_vec, padding_idx=Constants.PAD)
 
-        self.position_enc = nn.Embedding.from_pretrained(
-            get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
-            freeze=True)
+        pe = get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0)
+        self.position_enc = nn.Embedding.from_pretrained(pe, freeze=True)
 
-        self.layer_stack = nn.ModuleList([
-            EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
-            for _ in range(n_layers)])
+        self.layer_stack = nn.ModuleList(
+            [EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout) for _ in range(n_layers)]
+        )
 
     def forward(self, src_seq, src_pos, return_attns=False):
 
@@ -98,9 +161,11 @@ class Encoder(nn.Module):
             return enc_output, enc_slf_attn_list
         return enc_output,
 
-class Decoder(nn.Module):
-    ''' A decoder model with self attention mechanism. '''
 
+class Decoder(nn.Module):
+    """
+    A decoder model with self attention mechanism.
+    """
     def __init__(
             self,
             n_tgt_vocab, len_max_seq, d_word_vec,
@@ -110,8 +175,7 @@ class Decoder(nn.Module):
         super().__init__()
         n_position = len_max_seq + 1
 
-        self.tgt_word_emb = nn.Embedding(
-            n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
+        self.tgt_word_emb = nn.Embedding(n_tgt_vocab, d_word_vec, padding_idx=Constants.PAD)
 
         self.position_enc = nn.Embedding.from_pretrained(
             get_sinusoid_encoding_table(n_position, d_word_vec, padding_idx=0),
@@ -119,7 +183,8 @@ class Decoder(nn.Module):
 
         self.layer_stack = nn.ModuleList([
             DecoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
-            for _ in range(n_layers)])
+            for _ in range(n_layers)]
+        )
 
     def forward(self, tgt_seq, tgt_pos, src_seq, enc_output, return_attns=False):
 
@@ -152,16 +217,17 @@ class Decoder(nn.Module):
             return dec_output, dec_slf_attn_list, dec_enc_attn_list
         return dec_output,
 
-class Transformer(nn.Module):
-    ''' A sequence to sequence model with attention mechanism. '''
 
-    def __init__(
-            self,
-            n_src_vocab, n_tgt_vocab, len_max_seq,
-            d_word_vec=512, d_model=512, d_inner=2048,
-            n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1,
-            tgt_emb_prj_weight_sharing=True,
-            emb_src_tgt_weight_sharing=True):
+class Transformer(nn.Module):
+    """
+    A sequence to sequence model with attention mechanism.
+    """
+    def __init__(self,
+                 n_src_vocab, n_tgt_vocab, len_max_seq,
+                 d_word_vec=512, d_model=512, d_inner=2048,
+                 n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1,
+                 tgt_emb_prj_weight_sharing=True,
+                 emb_src_tgt_weight_sharing=True):
 
         super().__init__()
 
@@ -181,8 +247,7 @@ class Transformer(nn.Module):
         nn.init.xavier_normal_(self.tgt_word_prj.weight)
 
         assert d_model == d_word_vec, \
-        'To facilitate the residual connections, \
-         the dimensions of all module outputs shall be the same.'
+        'To facilitate the residual connections, the dimensions of all module outputs shall be the same.'
 
         if tgt_emb_prj_weight_sharing:
             # Share the weight matrix between target word embedding & the final logit dense layer
