@@ -44,6 +44,9 @@ class MultiHeadAttention(nn.Module):
 
         # Transpose for attention dot product: b x n x lq x dv
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+        
+        if mask is not None:
+            mask = mask.unsqueeze(1)
 
         output, attn = self.attention(q, k, v, mask=mask)
 
