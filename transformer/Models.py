@@ -65,6 +65,7 @@ class Encoder(nn.Module):
         self.layer_stack = nn.ModuleList([
             EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
+        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
     def forward(self, src_seq, src_mask, return_attns=False):
 
@@ -76,6 +77,8 @@ class Encoder(nn.Module):
         for enc_layer in self.layer_stack:
             enc_output, enc_slf_attn = enc_layer(enc_output, slf_attn_mask=src_mask)
             enc_slf_attn_list += [enc_slf_attn] if return_attns else []
+
+        enc_output = self.layer_norm(enc_output)
 
         if return_attns:
             return enc_output, enc_slf_attn_list
@@ -96,6 +99,7 @@ class Decoder(nn.Module):
         self.layer_stack = nn.ModuleList([
             DecoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
+        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
     def forward(self, trg_seq, trg_mask, enc_output, src_mask, return_attns=False):
 
@@ -109,6 +113,8 @@ class Decoder(nn.Module):
                 dec_output, enc_output, slf_attn_mask=trg_mask, dec_enc_attn_mask=src_mask)
             dec_slf_attn_list += [dec_slf_attn] if return_attns else []
             dec_enc_attn_list += [dec_enc_attn] if return_attns else []
+
+        dec_output = self.layer_norm(dec_output)
 
         if return_attns:
             return dec_output, dec_slf_attn_list, dec_enc_attn_list
