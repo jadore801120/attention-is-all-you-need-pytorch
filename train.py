@@ -195,7 +195,7 @@ def main():
     parser.add_argument('-data', required=True)
 
     parser.add_argument('-epoch', type=int, default=10)
-    parser.add_argument('-batch_size', type=int, default=64)
+    parser.add_argument('-batch_size', type=int, default=2048)
 
     parser.add_argument('-d_model', type=int, default=512)
     parser.add_argument('-d_inner_hid', type=int, default=2048)
@@ -220,6 +220,12 @@ def main():
     opt = parser.parse_args()
     opt.cuda = not opt.no_cuda
     opt.d_word_vec = opt.d_model
+
+    if opt.batch_size < 2048 and opt.n_warmup_steps <= 4000:
+        print('[Warning] The warmup steps may be not enough.\n'\
+              '(sz_b, warmup) = (2048, 4000) is the official setting.\n'\
+              'Using smaller batch w/o longer warmup may cause '\
+              'the warmup stage ends with only little data trained.')
 
     #========= Loading Dataset =========#
     data = pickle.load(open(opt.data, 'rb'))
@@ -257,7 +263,7 @@ def main():
 
     optimizer = ScheduledOptim(
         optim.Adam(transformer.parameters(), betas=(0.9, 0.98), eps=1e-09),
-        opt.d_model, opt.n_warmup_steps)
+        2.0, opt.d_model, opt.n_warmup_steps)
 
     training_data, validation_data = prepare_dataloaders(data, device, opt.batch_size)
     train(transformer, training_data, validation_data, optimizer, device, opt)
