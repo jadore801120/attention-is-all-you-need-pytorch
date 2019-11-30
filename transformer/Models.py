@@ -26,12 +26,11 @@ def _get_subsequent_mask(len_s, device):
 
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_hid, dropout, n_position=200):
+    def __init__(self, d_hid, n_position=200):
         super(PositionalEncoding, self).__init__()
 
         # Not a parameter
         self.register_buffer('pos_table', self._get_sinusoid_encoding_table(n_position, d_hid))
-        self.dropout = nn.Dropout(p=dropout)
 
     def _get_sinusoid_encoding_table(self, n_position, d_hid):
         ''' Sinusoid position encoding table '''
@@ -47,8 +46,7 @@ class PositionalEncoding(nn.Module):
         return torch.FloatTensor(sinusoid_table).unsqueeze(0)
 
     def forward(self, x):
-        x = x + self.pos_table[:, :x.size(1)].clone().detach()
-        return self.dropout(x)
+        return x + self.pos_table[:, :x.size(1)].clone().detach()
 
 
 class Encoder(nn.Module):
@@ -61,7 +59,8 @@ class Encoder(nn.Module):
         super().__init__()
 
         self.src_word_emb = nn.Embedding(n_src_vocab, d_word_vec, padding_idx=pad_idx)
-        self.position_enc = PositionalEncoding(d_word_vec, n_position=n_position, dropout=0.1)
+        self.position_enc = PositionalEncoding(d_word_vec, n_position=n_position)
+        self.dropout = nn.Dropout(p=dropout)
         self.layer_stack = nn.ModuleList([
             EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
@@ -72,7 +71,8 @@ class Encoder(nn.Module):
         enc_slf_attn_list = []
 
         # -- Forward
-        enc_output = self.position_enc(self.src_word_emb(src_seq))
+        
+        enc_output = self.dropout(self.position_enc(self.src_word_emb(src_seq)))
 
         for enc_layer in self.layer_stack:
             enc_output, enc_slf_attn = enc_layer(enc_output, slf_attn_mask=src_mask)
@@ -95,7 +95,8 @@ class Decoder(nn.Module):
         super().__init__()
 
         self.trg_word_emb = nn.Embedding(n_trg_vocab, d_word_vec, padding_idx=pad_idx)
-        self.position_enc = PositionalEncoding(d_word_vec, n_position=n_position, dropout=0.1)
+        self.position_enc = PositionalEncoding(d_word_vec, n_position=n_position)
+        self.dropout = nn.Dropout(p=dropout)
         self.layer_stack = nn.ModuleList([
             DecoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
@@ -106,7 +107,7 @@ class Decoder(nn.Module):
         dec_slf_attn_list, dec_enc_attn_list = [], []
 
         # -- Forward
-        dec_output = self.position_enc(self.trg_word_emb(trg_seq))
+        dec_output = self.dropout(self.position_enc(self.trg_word_emb(trg_seq)))
 
         for dec_layer in self.layer_stack:
             dec_output, dec_slf_attn, dec_enc_attn = dec_layer(
