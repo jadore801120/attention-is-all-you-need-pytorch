@@ -35,6 +35,7 @@ class MultiHeadAttention(nn.Module):
         sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
 
         residual = q
+        q = self.layer_norm(q)
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
@@ -53,9 +54,9 @@ class MultiHeadAttention(nn.Module):
         # Transpose to move the head dimension back: b x lq x n x dv
         # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)
         output = output.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
-
         output = self.dropout(self.fc(output))
-        output = self.layer_norm(output + residual)
+        output += residual
+
         return output, attn
 
 
@@ -70,8 +71,12 @@ class PositionwiseFeedForward(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+
         residual = x
+        x = self.layer_norm(x)
+
         output = self.w_2(F.relu(self.w_1(x)))
         output = self.dropout(output)
-        output = self.layer_norm(output + residual)
+        output += residual
+
         return output
