@@ -22,7 +22,7 @@ __author__ = "Yu-Hsiang Huang"
 def cal_performance(pred, gold, trg_pad_idx, smoothing=False):
     ''' Apply label smoothing if needed '''
 
-    loss = cal_loss(pred, gold, smoothing, trg_pad_idx)
+    loss = cal_loss(pred, gold, trg_pad_idx, smoothing=smoothing)
 
     pred = pred.max(1)[1]
     gold = gold.contiguous().view(-1)
