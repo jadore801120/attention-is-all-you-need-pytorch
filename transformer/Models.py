@@ -157,20 +157,13 @@ class Transformer(nn.Module):
         'To facilitate the residual connections, \
          the dimensions of all module outputs shall be the same.'
 
+        self.x_logit_scale = 1.
         if trg_emb_prj_weight_sharing:
-            raise NotImplementedError
-            # Share the weight matrix
-            # between target word embedding & the final logit dense layer
+            # Share the weight between target word embedding & last dense layer
             self.trg_word_prj.weight = self.decoder.trg_word_emb.weight
             self.x_logit_scale = (d_model ** -0.5)
-        else:
-            self.x_logit_scale = 1.
 
         if emb_src_trg_weight_sharing:
-            raise NotImplementedError
-            # Share the weight matrix between source & target word embeddings
-            assert n_src_vocab == n_trg_vocab, \
-            "To share word embedding table, the vocabulary size of src/trg shall be the same."
             self.encoder.src_word_emb.weight = self.decoder.trg_word_emb.weight
 
 
