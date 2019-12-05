@@ -196,11 +196,12 @@ def main():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-data', default=None)
+    # Data source 1
+    parser.add_argument('-data_pkl', default=None)     # For all-in-1 data pickle
 
-    # For bpe encoded data
-    #parser.add_argument('-train_path', default=None)
-    #parser.add_argument('-val_path', default=None)
+    # Data source 2
+    parser.add_argument('-train_path', default=None)   # For bpe encoded data
+    parser.add_argument('-val_path', default=None)     # For bpe encoded data
 
     parser.add_argument('-epoch', type=int, default=10)
     parser.add_argument('-b', '--batch_size', type=int, default=2048)
@@ -236,24 +237,16 @@ def main():
               'the warmup stage ends with only little data trained.')
 
     device = torch.device('cuda' if opt.cuda else 'cpu')
+
     #========= Loading Dataset =========#
-    data = pickle.load(open(opt.data, 'rb'))
-    opt.max_token_seq_len = data['settings'].max_len
-    opt.src_pad_idx = data['vocab']['src'].vocab.stoi[Constants.PAD_WORD]
-    opt.trg_pad_idx = data['vocab']['trg'].vocab.stoi[Constants.PAD_WORD]
+    assert bool(opt.data_pkl) ^ all((opt.train_path, opt.val_path)), 'Ambiguous data source'
 
-    opt.src_vocab_size = len(data['vocab']['src'].vocab)
-    opt.trg_vocab_size = len(data['vocab']['trg'].vocab)
-    training_data, validation_data = prepare_dataloaders(data, device, opt.batch_size)
-
-    #========= Preparing Model =========#
-    if opt.embs_share_weight:
-        assert data['vocab']['src'].vocab.stoi == data['vocab']['trg'].vocab.stoi, \
-            'To sharing word embedding the src/trg word2idx table shall be the same.'
-    '''
-    opt.max_token_seq_len = 102
-    training_data, validation_data = prepare_dataloaders_from_files(opt, device, opt.batch_size)
-    '''
+    if opt.data_pkl:
+        training_data, validation_data = prepare_dataloaders(opt, device)
+    elif all((opt.train_path, opt.val_path)):
+        training_data, validation_data = prepare_dataloaders_from_bpe_files(opt, device)
+    else:
+        raise
 
     print(opt)
 
@@ -280,9 +273,12 @@ def main():
     train(transformer, training_data, validation_data, optimizer, device, opt)
 
 
-def prepare_dataloaders_from_files(opt, device, batch_size):
+def prepare_dataloaders_from_bpe_files(opt, device):
+    batch_size = opt.batch_size
     MAX_LEN = 102
-    MIN_FREQ = 1
+    MIN_FREQ = 2
+    if not opt.embs_share_weight:
+        raise
 
     def filter_examples_with_length(x):
         return len(vars(x)['src']) <= MAX_LEN and len(vars(x)['trg']) <= MAX_LEN
@@ -294,7 +290,6 @@ def prepare_dataloaders_from_files(opt, device, batch_size):
         init_token=Constants.BOS_WORD,
         eos_token=Constants.EOS_WORD)
 
-    #fields = {'src': field, 'trg': field}
     fields = (field, field)
     train = TranslationDataset(
         fields=fields,
@@ -308,13 +303,11 @@ def prepare_dataloaders_from_files(opt, device, batch_size):
         filter_pred=filter_examples_with_length)
 
     from itertools import chain
-
     field.build_vocab(chain(train.src, train.trg), min_freq=MIN_FREQ)
-    print(len(field.vocab))
+    #print(len(field.vocab))
 
-    opt.src_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
-    opt.trg_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
-
+    opt.max_token_seq_len = MAX_LEN
+    opt.src_pad_idx = opt.trg_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
     opt.src_vocab_size = opt.trg_vocab_size = len(field.vocab)
 
     train_iterator = BucketIterator(train, batch_size=batch_size, device=device, train=True)
@@ -322,16 +315,31 @@ def prepare_dataloaders_from_files(opt, device, batch_size):
     return train_iterator, val_iterator
 
 
-def prepare_dataloaders(data, device, batch_size):
+def prepare_dataloaders(opt, device):
+    batch_size = opt.batch_size
+    data = pickle.load(open(opt.data_pkl, 'rb'))
+
+    opt.max_token_seq_len = data['settings'].max_len
+    opt.src_pad_idx = data['vocab']['src'].vocab.stoi[Constants.PAD_WORD]
+    opt.trg_pad_idx = data['vocab']['trg'].vocab.stoi[Constants.PAD_WORD]
+
+    opt.src_vocab_size = len(data['vocab']['src'].vocab)
+    opt.trg_vocab_size = len(data['vocab']['trg'].vocab)
+
+    #========= Preparing Model =========#
+    if opt.embs_share_weight:
+        assert data['vocab']['src'].vocab.stoi == data['vocab']['trg'].vocab.stoi, \
+            'To sharing word embedding the src/trg word2idx table shall be the same.'
+
     fields = {'src': data['vocab']['src'], 'trg':data['vocab']['trg']}
 
     train = Dataset(examples=data['train'], fields=fields)
-    valid = Dataset(examples=data['valid'], fields=fields)
+    val = Dataset(examples=data['valid'], fields=fields)
 
     train_iterator = BucketIterator(train, batch_size=batch_size, device=device, train=True)
-    valid_iterator = BucketIterator(valid, batch_size=batch_size, device=device)
+    val_iterator = BucketIterator(val, batch_size=batch_size, device=device)
 
-    return train_iterator, valid_iterator
+    return train_iterator, val_iterator
 
 
 if __name__ == '__main__':
