@@ -11,7 +11,8 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from torchtext.data import Dataset, BucketIterator
+from torchtext.data import Field, Dataset, BucketIterator
+from torchtext.datasets import TranslationDataset
 
 import transformer.Constants as Constants
 from transformer.Models import Transformer
@@ -149,7 +150,8 @@ def train(model, training_data, validation_data, optimizer, device, opt):
                   header=f"({header})", ppl=math.exp(min(loss, 100)),
                   accu=100*accu, elapse=(time.time()-start_time)/60))
 
-    valid_accus = []
+    #valid_accus = []
+    valid_losses = []
     for epoch_i in range(opt.epoch):
         print('[ Epoch', epoch_i, ']')
 
@@ -162,7 +164,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
         valid_loss, valid_accu = eval_epoch(model, validation_data, device, opt)
         print_performances('Validation', valid_loss, valid_accu, start)
 
-        valid_accus += [valid_accu]
+        valid_losses += [valid_loss]
 
         checkpoint = {'epoch': epoch_i, 'settings': opt, 'model': model.state_dict()}
 
@@ -172,7 +174,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
                 torch.save(checkpoint, model_name)
             elif opt.save_mode == 'best':
                 model_name = opt.save_model + '.chkpt'
-                if valid_accu >= max(valid_accus):
+                if valid_loss <= min(valid_losses):
                     torch.save(checkpoint, model_name)
                     print('    - [Info] The checkpoint file has been updated.')
 
@@ -187,15 +189,21 @@ def train(model, training_data, validation_data, optimizer, device, opt):
 
 def main():
     ''' 
-    Usage: python train.py -data multi30k_de_en.pkl -save_model trained_de_en.pkl
+    Usage:
+    python train.py -data multi30k_de_en.pkl -save_model trained_de_en.pkl -embs_share_weight -proj_share_weight
+    python train.py -data multi30k_de_en.pkl -save_model trained_de_en.pkl -embs_share_weight -proj_share_weight -b 256 -warmup 128000
     '''
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-data', required=True)
+    parser.add_argument('-data', default=None)
+
+    # For bpe encoded data
+    #parser.add_argument('-train_path', default=None)
+    #parser.add_argument('-val_path', default=None)
 
     parser.add_argument('-epoch', type=int, default=10)
-    parser.add_argument('-batch_size', type=int, default=2048)
+    parser.add_argument('-b', '--batch_size', type=int, default=2048)
 
     parser.add_argument('-d_model', type=int, default=512)
     parser.add_argument('-d_inner_hid', type=int, default=2048)
@@ -204,7 +212,7 @@ def main():
 
     parser.add_argument('-n_head', type=int, default=8)
     parser.add_argument('-n_layers', type=int, default=6)
-    parser.add_argument('-n_warmup_steps', type=int, default=4000)
+    parser.add_argument('-warmup','--n_warmup_steps', type=int, default=4000)
 
     parser.add_argument('-dropout', type=float, default=0.1)
     parser.add_argument('-embs_share_weight', action='store_true')
@@ -227,6 +235,7 @@ def main():
               'Using smaller batch w/o longer warmup may cause '\
               'the warmup stage ends with only little data trained.')
 
+    device = torch.device('cuda' if opt.cuda else 'cpu')
     #========= Loading Dataset =========#
     data = pickle.load(open(opt.data, 'rb'))
     opt.max_token_seq_len = data['settings'].max_len
@@ -235,16 +244,19 @@ def main():
 
     opt.src_vocab_size = len(data['vocab']['src'].vocab)
     opt.trg_vocab_size = len(data['vocab']['trg'].vocab)
+    training_data, validation_data = prepare_dataloaders(data, device, opt.batch_size)
 
     #========= Preparing Model =========#
     if opt.embs_share_weight:
-        raise NotImplementedError
-        assert training_data.dataset.src_word2idx == training_data.dataset.trg_word2idx, \
-            'The src/trg word2idx table are different but asked to share word embedding.'
+        assert data['vocab']['src'].vocab.stoi == data['vocab']['trg'].vocab.stoi, \
+            'To sharing word embedding the src/trg word2idx table shall be the same.'
+    '''
+    opt.max_token_seq_len = 102
+    training_data, validation_data = prepare_dataloaders_from_files(opt, device, opt.batch_size)
+    '''
 
     print(opt)
 
-    device = torch.device('cuda' if opt.cuda else 'cpu')
     transformer = Transformer(
         opt.src_vocab_size,
         opt.trg_vocab_size,
@@ -265,8 +277,49 @@ def main():
         optim.Adam(transformer.parameters(), betas=(0.9, 0.98), eps=1e-09),
         2.0, opt.d_model, opt.n_warmup_steps)
 
-    training_data, validation_data = prepare_dataloaders(data, device, opt.batch_size)
     train(transformer, training_data, validation_data, optimizer, device, opt)
+
+
+def prepare_dataloaders_from_files(opt, device, batch_size):
+    MAX_LEN = 102
+    MIN_FREQ = 1
+
+    def filter_examples_with_length(x):
+        return len(vars(x)['src']) <= MAX_LEN and len(vars(x)['trg']) <= MAX_LEN
+
+    field = Field(
+        tokenize=str.split,
+        lower=True,
+        pad_token=Constants.PAD_WORD,
+        init_token=Constants.BOS_WORD,
+        eos_token=Constants.EOS_WORD)
+
+    #fields = {'src': field, 'trg': field}
+    fields = (field, field)
+    train = TranslationDataset(
+        fields=fields,
+        path=opt.train_path, 
+        exts=('.src', '.trg'),
+        filter_pred=filter_examples_with_length)
+    val = TranslationDataset(
+        fields=fields,
+        path=opt.val_path, 
+        exts=('.src', '.trg'),
+        filter_pred=filter_examples_with_length)
+
+    from itertools import chain
+
+    field.build_vocab(chain(train.src, train.trg), min_freq=MIN_FREQ)
+    print(len(field.vocab))
+
+    opt.src_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
+    opt.trg_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
+
+    opt.src_vocab_size = opt.trg_vocab_size = len(field.vocab)
+
+    train_iterator = BucketIterator(train, batch_size=batch_size, device=device, train=True)
+    val_iterator = BucketIterator(val, batch_size=batch_size, device=device)
+    return train_iterator, val_iterator
 
 
 def prepare_dataloaders(data, device, batch_size):

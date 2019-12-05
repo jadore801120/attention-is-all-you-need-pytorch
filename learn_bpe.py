@@ -19,68 +19,30 @@ import inspect
 import codecs
 import re
 import copy
-import argparse
 import warnings
 from collections import defaultdict, Counter
 
-# hack for python2/3 compatibility
-from io import open
-argparse.open = open
 
-def create_parser(subparsers=None):
-
-    if subparsers:
-        parser = subparsers.add_parser('learn-bpe',
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description="learn BPE-based word segmentation")
-    else:
-        parser = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description="learn BPE-based word segmentation")
-
-    parser.add_argument(
-        '--input', '-i', type=argparse.FileType('r'), default=sys.stdin,
-        metavar='PATH',
-        help="Input text (default: standard input).")
-
-    parser.add_argument(
-        '--output', '-o', type=argparse.FileType('w'), default=sys.stdout,
-        metavar='PATH',
-        help="Output file for BPE codes (default: standard output)")
-    parser.add_argument(
-        '--symbols', '-s', type=int, default=10000,
-        help="Create this many new symbols (each representing a character n-gram) (default: %(default)s))")
-    parser.add_argument(
-        '--min-frequency', type=int, default=2, metavar='FREQ',
-        help='Stop if no symbol pair has frequency >= FREQ (default: %(default)s))')
-    parser.add_argument('--dict-input', action="store_true",
-        help="If set, input file is interpreted as a dictionary where each line contains a word-count pair")
-    parser.add_argument(
-        '--total-symbols', '-t', action="store_true",
-        help="subtract number of characters from the symbols to be generated (so that '--symbols' becomes an estimate for the total number of symbols needed to encode text).")
-    parser.add_argument(
-        '--verbose', '-v', action="store_true",
-        help="verbose mode.")
-
-    return parser
-
-def get_vocabulary(fobj, is_dict=False):
+def update_vocabulary(vocab, file_name, is_dict=False):
     """Read text and return dictionary that encodes vocabulary
     """
-    vocab = Counter()
-    for i, line in enumerate(fobj):
-        if is_dict:
-            try:
-                word, count = line.strip('\r\n ').split(' ')
-            except:
-                print('Failed reading vocabulary file at line {0}: {1}'.format(i, line))
-                sys.exit(1)
-            vocab[word] += int(count)
-        else:
-            for word in line.strip('\r\n ').split(' '):
-                if word:
-                    vocab[word] += 1
+
+    #vocab = Counter()
+    with codecs.open(file_name, encoding='utf-8') as fobj:
+        for i, line in enumerate(fobj):
+            if is_dict:
+                try:
+                    word, count = line.strip('\r\n ').split(' ')
+                except:
+                    print('Failed reading vocabulary file at line {0}: {1}'.format(i, line))
+                    sys.exit(1)
+                vocab[word] += int(count)
+            else:
+                for word in line.strip('\r\n ').split(' '):
+                    if word:
+                        vocab[word] += 1
     return vocab
+
 
 def update_pair_statistics(pair, changed, stats, indices):
     """Minimally update the indices and frequency of symbol pairs
@@ -200,15 +162,19 @@ def prune_stats(stats, big_stats, threshold):
                 big_stats[item] = freq
 
 
-def learn_bpe(infile, outfile, num_symbols, min_frequency=2, verbose=False, is_dict=False, total_symbols=False):
+def learn_bpe(infile_names, outfile_name, num_symbols, min_frequency=2, verbose=False, is_dict=False, total_symbols=False):
     """Learn num_symbols BPE operations from vocabulary, and write to outfile.
     """
+    sys.stderr = codecs.getwriter('UTF-8')(sys.stderr.buffer)
+    sys.stdout = codecs.getwriter('UTF-8')(sys.stdout.buffer)
+    sys.stdin = codecs.getreader('UTF-8')(sys.stdin.buffer)
 
-    # version 0.2 changes the handling of the end-of-word token ('</w>');
-    # version numbering allows bckward compatibility
-    outfile.write('#version: 0.2\n')
+    #vocab = get_vocabulary(infile, is_dict)
+    vocab = Counter()
+    for f in infile_names:
+        sys.stderr.write(f'Collecting vocab from {f}\n')
+        vocab = update_vocabulary(vocab, f, is_dict)
 
-    vocab = get_vocabulary(infile, is_dict)
     vocab = dict([(tuple(x[:-1])+(x[-1]+'</w>',) ,y) for (x,y) in vocab.items()])
     sorted_vocab = sorted(vocab.items(), key=lambda x: x[1], reverse=True)
 
@@ -227,63 +193,39 @@ def learn_bpe(infile, outfile, num_symbols, min_frequency=2, verbose=False, is_d
         sys.stderr.write('Reducing number of merge operations by {0}\n'.format(len(uniq_char_internal) + len(uniq_char_final)))
         num_symbols -= len(uniq_char_internal) + len(uniq_char_final)
 
-    # threshold is inspired by Zipfian assumption, but should only affect speed
-    threshold = max(stats.values()) / 10
-    for i in range(num_symbols):
-        if stats:
-            most_frequent = max(stats, key=lambda x: (stats[x], x))
 
-        # we probably missed the best pair because of pruning; go back to full statistics
-        if not stats or (i and stats[most_frequent] < threshold):
-            prune_stats(stats, big_stats, threshold)
-            stats = copy.deepcopy(big_stats)
-            most_frequent = max(stats, key=lambda x: (stats[x], x))
-            # threshold is inspired by Zipfian assumption, but should only affect speed
-            threshold = stats[most_frequent] * i/(i+10000.0)
-            prune_stats(stats, big_stats, threshold)
+    sys.stderr.write(f'Write vocab file to {outfile_name}')
+    with codecs.open(outfile_name, 'w', encoding='utf-8') as outfile:
+        # version 0.2 changes the handling of the end-of-word token ('</w>');
+        # version numbering allows bckward compatibility
 
-        if stats[most_frequent] < min_frequency:
-            sys.stderr.write('no pair has frequency >= {0}. Stopping\n'.format(min_frequency))
-            break
+        outfile.write('#version: 0.2\n')
+        # threshold is inspired by Zipfian assumption, but should only affect speed
+        threshold = max(stats.values()) / 10
+        for i in range(num_symbols):
+            if stats:
+                most_frequent = max(stats, key=lambda x: (stats[x], x))
 
-        if verbose:
-            sys.stderr.write('pair {0}: {1} {2} -> {1}{2} (frequency {3})\n'.format(i, most_frequent[0], most_frequent[1], stats[most_frequent]))
-        outfile.write('{0} {1}\n'.format(*most_frequent))
-        changes = replace_pair(most_frequent, sorted_vocab, indices)
-        update_pair_statistics(most_frequent, changes, stats, indices)
-        stats[most_frequent] = 0
-        if not i % 100:
-            prune_stats(stats, big_stats, threshold)
+            # we probably missed the best pair because of pruning; go back to full statistics
+            if not stats or (i and stats[most_frequent] < threshold):
+                prune_stats(stats, big_stats, threshold)
+                stats = copy.deepcopy(big_stats)
+                most_frequent = max(stats, key=lambda x: (stats[x], x))
+                # threshold is inspired by Zipfian assumption, but should only affect speed
+                threshold = stats[most_frequent] * i/(i+10000.0)
+                prune_stats(stats, big_stats, threshold)
 
+            if stats[most_frequent] < min_frequency:
+                sys.stderr.write(f'no pair has frequency >= {min_frequency}. Stopping\n')
+                break
 
-if __name__ == '__main__':
+            if verbose:
+                sys.stderr.write('pair {0}: {1} {2} -> {1}{2} (frequency {3})\n'.format(
+                    i, most_frequent[0], most_frequent[1], stats[most_frequent]))
+            outfile.write('{0} {1}\n'.format(*most_frequent))
+            changes = replace_pair(most_frequent, sorted_vocab, indices)
+            update_pair_statistics(most_frequent, changes, stats, indices)
+            stats[most_frequent] = 0
+            if not i % 100:
+                prune_stats(stats, big_stats, threshold)
 
-    currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    newdir = os.path.join(currentdir, 'subword_nmt')
-    if os.path.isdir(newdir):
-        warnings.simplefilter('default')
-        warnings.warn(
-            "this script's location has moved to {0}. This symbolic link will be removed in a future version. Please point to the new location, or install the package and use the command 'subword-nmt'".format(newdir),
-            DeprecationWarning
-        )
-
-    # python 2/3 compatibility
-    if sys.version_info < (3, 0):
-        sys.stderr = codecs.getwriter('UTF-8')(sys.stderr)
-        sys.stdout = codecs.getwriter('UTF-8')(sys.stdout)
-        sys.stdin = codecs.getreader('UTF-8')(sys.stdin)
-    else:
-        sys.stderr = codecs.getwriter('UTF-8')(sys.stderr.buffer)
-        sys.stdout = codecs.getwriter('UTF-8')(sys.stdout.buffer)
-        sys.stdin = codecs.getreader('UTF-8')(sys.stdin.buffer)
-
-    parser = create_parser()
-    args = parser.parse_args()
-
-    # read/write files as UTF-8
-    if args.input.name != '<stdin>':
-        args.input = codecs.open(args.input.name, encoding='utf-8')
-    if args.output.name != '<stdout>':
-        args.output = codecs.open(args.output.name, 'w', encoding='utf-8')
-
-    learn_bpe(args.input, args.output, args.symbols, args.min_frequency, args.verbose, is_dict=args.dict_input, total_symbols=args.total_symbols)
