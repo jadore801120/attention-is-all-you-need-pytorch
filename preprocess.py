@@ -297,5 +297,5 @@ def main_wo_bpe():
 
 
 if __name__ == '__main__':
-    #main_wo_bpe()
-    main()
+    main_wo_bpe()
+    #main()
