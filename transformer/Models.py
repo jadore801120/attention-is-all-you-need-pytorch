@@ -8,7 +8,7 @@ from transformer.Layers import EncoderLayer, DecoderLayer
 __author__ = "Yu-Hsiang Huang"
 
 
-def get_pad_masks(seq, pad_idx):
+def get_pad_mask(seq, pad_idx):
     return (seq != pad_idx).unsqueeze(-2)
 
 
@@ -169,8 +169,8 @@ class Transformer(nn.Module):
 
     def forward(self, src_seq, trg_seq):
 
-        src_mask = get_pad_masks(src_seq, self.src_pad_idx)
-        trg_mask = get_pad_masks(trg_seq, self.trg_pad_idx) & get_subsequent_mask(trg_seq)
+        src_mask = get_pad_mask(src_seq, self.src_pad_idx)
+        trg_mask = get_pad_mask(trg_seq, self.trg_pad_idx) & get_subsequent_mask(trg_seq)
 
         enc_output, *_ = self.encoder(src_seq, src_mask)
         dec_output, *_ = self.decoder(trg_seq, trg_mask, enc_output, src_mask)
