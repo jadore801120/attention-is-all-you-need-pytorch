@@ -12,6 +12,7 @@ import torch
 import tarfile
 import torchtext.data
 import torchtext.datasets
+from torchtext.datasets import TranslationDataset
 import transformer.Constants as Constants
 from learn_bpe import learn_bpe
 from apply_bpe import BPE
@@ -149,18 +150,21 @@ def encode_files(bpe, src_in_file, trg_in_file, data_dir, prefix):
     trg_out_file = os.path.join(data_dir, f"{prefix}.trg")
 
     if os.path.isfile(src_out_file) and os.path.isfile(trg_out_file):
-        sys.stderr.write(f"Encoded files found, skip the encoding process ...")
+        sys.stderr.write(f"Encoded files found, skip the encoding process ...\n")
 
     encode_file(bpe, src_in_file, src_out_file)
     encode_file(bpe, trg_in_file, trg_out_file)
+    return src_out_file, trg_out_file
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-raw_dir', required=True)
     parser.add_argument('-data_dir', required=True)
-    parser.add_argument('-vocab', required=True)
+    parser.add_argument('-codes', required=True)
+    parser.add_argument('-save_data', required=True)
     parser.add_argument('-prefix', required=True)
+    parser.add_argument('-max_len', type=int, default=100)
     parser.add_argument('--symbols', '-s', type=int, default=32000, help="Vocabulary size")
     parser.add_argument(
         '--min-frequency', type=int, default=6, metavar='FREQ',
@@ -187,22 +191,53 @@ def main():
     val_src, val_trg = compile_files(opt.raw_dir, raw_val, opt.prefix + '-val')
     test_src, test_trg = compile_files(opt.raw_dir, raw_test, opt.prefix + '-test')
 
-    # Build up the vocabulary from training files if not exist
-    opt.vocab = os.path.join(opt.data_dir, opt.vocab)
-    if not os.path.isfile(opt.vocab):
-        sys.stderr.write(f"Collect codes from training data and save to {opt.vocab}.\n")
-        learn_bpe(raw_train['src'] + raw_train['trg'], opt.vocab, opt.symbols, opt.min_frequency, True)
-    sys.stderr.write(f"Vocabulary prepared.\n")
+    # Build up the code from training files if not exist
+    opt.codes = os.path.join(opt.data_dir, opt.codes)
+    if not os.path.isfile(opt.codes):
+        sys.stderr.write(f"Collect codes from training data and save to {opt.codes}.\n")
+        learn_bpe(raw_train['src'] + raw_train['trg'], opt.codes, opt.symbols, opt.min_frequency, True)
+    sys.stderr.write(f"BPE codes prepared.\n")
 
     sys.stderr.write(f"Build up the tokenizer.\n")
-    with codecs.open(opt.vocab, encoding='utf-8') as codes: 
+    with codecs.open(opt.codes, encoding='utf-8') as codes: 
         bpe = BPE(codes, separator=opt.separator)
 
     sys.stderr.write(f"Encoding ...\n")
-    encode_files(bpe, train_src, train_trg, opt.data_dir,  opt.prefix + '-train')
-    encode_files(bpe, val_src, val_trg, opt.data_dir,  opt.prefix + '-val')
-    encode_files(bpe, test_src, test_trg, opt.data_dir,  opt.prefix + '-test')
+    encode_files(bpe, train_src, train_trg, opt.data_dir, opt.prefix + '-train')
+    encode_files(bpe, val_src, val_trg, opt.data_dir, opt.prefix + '-val')
+    encode_files(bpe, test_src, test_trg, opt.data_dir, opt.prefix + '-test')
     sys.stderr.write(f"Done.\n")
+
+
+    field = torchtext.data.Field(
+        tokenize=str.split,
+        lower=True,
+        pad_token=Constants.PAD_WORD,
+        init_token=Constants.BOS_WORD,
+        eos_token=Constants.EOS_WORD)
+
+    fields = (field, field)
+
+    MAX_LEN = opt.max_len
+
+    def filter_examples_with_length(x):
+        return len(vars(x)['src']) <= MAX_LEN and len(vars(x)['trg']) <= MAX_LEN
+
+    enc_train_files_prefix = opt.prefix + '-train'
+    train = TranslationDataset(
+        fields=fields,
+        path=os.path.join(opt.data_dir, enc_train_files_prefix),
+        exts=('.src', '.trg'),
+        filter_pred=filter_examples_with_length)
+
+    from itertools import chain
+    field.build_vocab(chain(train.src, train.trg), min_freq=2)
+
+    data = { 'settings': opt, 'vocab': field, }
+    opt.save_data = os.path.join(opt.data_dir, opt.save_data)
+
+    print('[Info] Dumping the processed data to pickle file', opt.save_data)
+    pickle.dump(data, open(opt.save_data, 'wb'))
 
 
 

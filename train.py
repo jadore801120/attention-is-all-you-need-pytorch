@@ -190,18 +190,15 @@ def train(model, training_data, validation_data, optimizer, device, opt):
 def main():
     ''' 
     Usage:
-    python train.py -data multi30k_de_en.pkl -save_model trained_de_en.pkl -embs_share_weight -proj_share_weight
-    python train.py -data multi30k_de_en.pkl -save_model trained_de_en.pkl -embs_share_weight -proj_share_weight -b 256 -warmup 128000
+    python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000
     '''
 
     parser = argparse.ArgumentParser()
 
-    # Data source 1
-    parser.add_argument('-data_pkl', default=None)     # For all-in-1 data pickle
+    parser.add_argument('-data_pkl', default=None)     # all-in-1 data pickle or bpe field
 
-    # Data source 2
-    parser.add_argument('-train_path', default=None)   # For bpe encoded data
-    parser.add_argument('-val_path', default=None)     # For bpe encoded data
+    parser.add_argument('-train_path', default=None)   # bpe encoded data
+    parser.add_argument('-val_path', default=None)     # bpe encoded data
 
     parser.add_argument('-epoch', type=int, default=10)
     parser.add_argument('-b', '--batch_size', type=int, default=2048)
@@ -230,6 +227,10 @@ def main():
     opt.cuda = not opt.no_cuda
     opt.d_word_vec = opt.d_model
 
+    if not opt.log and not opt.save_model:
+        print('No experiment result will be saved.')
+        raise
+
     if opt.batch_size < 2048 and opt.n_warmup_steps <= 4000:
         print('[Warning] The warmup steps may be not enough.\n'\
               '(sz_b, warmup) = (2048, 4000) is the official setting.\n'\
@@ -239,12 +240,11 @@ def main():
     device = torch.device('cuda' if opt.cuda else 'cpu')
 
     #========= Loading Dataset =========#
-    assert bool(opt.data_pkl) ^ all((opt.train_path, opt.val_path)), 'Ambiguous data source'
 
-    if opt.data_pkl:
-        training_data, validation_data = prepare_dataloaders(opt, device)
-    elif all((opt.train_path, opt.val_path)):
+    if all((opt.train_path, opt.val_path)):
         training_data, validation_data = prepare_dataloaders_from_bpe_files(opt, device)
+    elif opt.data_pkl:
+        training_data, validation_data = prepare_dataloaders(opt, device)
     else:
         raise
 
@@ -275,22 +275,18 @@ def main():
 
 def prepare_dataloaders_from_bpe_files(opt, device):
     batch_size = opt.batch_size
-    MAX_LEN = 102
     MIN_FREQ = 2
     if not opt.embs_share_weight:
         raise
 
+    data = pickle.load(open(opt.data_pkl, 'rb'))
+    MAX_LEN = data['settings'].max_len
+    field = data['vocab']
+    fields = (field, field)
+
     def filter_examples_with_length(x):
         return len(vars(x)['src']) <= MAX_LEN and len(vars(x)['trg']) <= MAX_LEN
 
-    field = Field(
-        tokenize=str.split,
-        lower=True,
-        pad_token=Constants.PAD_WORD,
-        init_token=Constants.BOS_WORD,
-        eos_token=Constants.EOS_WORD)
-
-    fields = (field, field)
     train = TranslationDataset(
         fields=fields,
         path=opt.train_path, 
@@ -302,16 +298,7 @@ def prepare_dataloaders_from_bpe_files(opt, device):
         exts=('.src', '.trg'),
         filter_pred=filter_examples_with_length)
 
-    from itertools import chain
-    field.build_vocab(chain(train.src, train.trg), min_freq=MIN_FREQ)
-    #print(len(field.vocab))
-
-    # WARN: TODO: BAD IMPLEMENTATION. shall unify the interface.
-    vocab_path = f"{opt.train_path}.train.vocab"
-    print('[Info] Dumping the vocab to pickle file', vocab_path)
-    pickle.dump(field, open(vocab_path, 'wb'))
-
-    opt.max_token_seq_len = MAX_LEN
+    opt.max_token_seq_len = MAX_LEN + 2
     opt.src_pad_idx = opt.trg_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
     opt.src_vocab_size = opt.trg_vocab_size = len(field.vocab)
 
