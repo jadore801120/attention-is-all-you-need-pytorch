@@ -18,61 +18,68 @@ The project support training and translation with trained model now.
 
 Note that this project is still a work in progress.
 
+**BPE related parts are not yet fully tested.**
+
 
 If there is any suggestion or error, feel free to fire an issue to let me know. :)
 
 
 # Requirement
 - python 3.4+
-- pytorch 0.4.1+
+- pytorch 1.1.0+
+- torchtext 0.3.1+
+- spacy 2.2.2+
 - tqdm
+- dill
 - numpy
 
 
 # Usage
 
-## Some useful tools:
-
-The example below uses the Moses tokenizer (http://www.statmt.org/moses/) to prepare the data and the moses BLEU script for evaluation.
-
-```bash
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/tokenizer/tokenizer.perl
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.de
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.en
-sed -i "s/$RealBin\/..\/share\/nonbreaking_prefixes//" tokenizer.perl
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/generic/multi-bleu.perl
-```
-
-## WMT'16 Multimodal Translation: Multi30k (de-en)
+## WMT'16 Multimodal Translation: de-en
 
 An example of training for the WMT'16 Multimodal Translation task (http://www.statmt.org/wmt16/multimodal-task.html).
 
-### 0) Download the data.
-
+### 0) Download the spacy language model.
 ```bash
-mkdir -p data/multi30k
-wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/training.tar.gz &&  tar -xf training.tar.gz -C data/multi30k && rm training.tar.gz
-wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/validation.tar.gz && tar -xf validation.tar.gz -C data/multi30k && rm validation.tar.gz
-wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/mmt16_task1_test.tar.gz && tar -xf mmt16_task1_test.tar.gz -C data/multi30k && rm mmt16_task1_test.tar.gz
+# conda install -c conda-forge spacy 
+python -m spacy download en
+python -m spacy download de
 ```
 
-### 1) Preprocess the data.
+### 1) Preprocess the data with torchtext and spacy.
 ```bash
-for l in en de; do for f in data/multi30k/*.$l; do if [[ "$f" != *"test"* ]]; then sed -i "$ d" $f; fi;  done; done
-for l in en de; do for f in data/multi30k/*.$l; do perl tokenizer.perl -a -no-escape -l $l -q  < $f > $f.atok; done; done
-python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low.pt
+python preprocess.py -lang_src de -lang_trg en -share_vocab -save_data m30k_deen_shr.pkl
 ```
 
 ### 2) Train the model
 ```bash
-python train.py -data data/multi30k.atok.low.pt -save_model trained -save_mode best -proj_share_weight -label_smoothing
+python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000
 ```
-> If your source and target language share one common vocabulary, use the `-embs_share_weight` flag to enable the model to share source/target word embedding. 
 
 ### 3) Test the model
 ```bash
-python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src data/multi30k/test.en.atok -no_cuda
+python translate.py -data_pkl m30k_deen_shr.pkl -model trained.chkpt -output prediction.txt
 ```
+
+## [(WIP)] WMT'17 Multimodal Translation: de-en w/ BPE 
+### 1) Download and preprocess the data with bpe:
+
+> Since the interfaces is not unified, you need to switch the main function call from `main_wo_bpe` to `main`.
+
+```bash
+python preprocess.py -raw_dir /tmp/raw_deen -data_dir ./bpe_deen -save_data bpe_vocab.pkl -codes codes.txt -prefix deen
+```
+
+### 2) Train the model
+```bash
+python train.py -data_pkl ./bpe_deen/bpe_vocab.pkl -train_path ./bpe_deen/deen-train -val_path ./bpe_deen/deen-val -log deen_bpe -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000
+```
+
+### 3) Test the model (not ready)
+- TODO:
+	- Load vocabulary.
+	- Perform decoding after the translation.
 ---
 # Performance
 ## Training
@@ -99,5 +106,6 @@ python translate.py -model trained.chkpt -vocab data/multi30k.atok.low.pt -src d
   - Attention weight plot.
 ---
 # Acknowledgement
+- The byte pair encoding parts are borrowed from [subword-nmt](https://github.com/rsennrich/subword-nmt/).
 - The project structure, some scripts and the dataset preprocessing steps are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py).
 - Thanks for the suggestions from @srush, @iamalbert and @ZiJianZhao.
