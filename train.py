@@ -306,6 +306,11 @@ def prepare_dataloaders_from_bpe_files(opt, device):
     field.build_vocab(chain(train.src, train.trg), min_freq=MIN_FREQ)
     #print(len(field.vocab))
 
+    # WARN: TODO: BAD IMPLEMENTATION. shall unify the interface.
+    vocab_path = f"{opt.train_path}.train.vocab"
+    print('[Info] Dumping the vocab to pickle file', vocab_path)
+    pickle.dump(field, open(vocab_path, 'wb'))
+
     opt.max_token_seq_len = MAX_LEN
     opt.src_pad_idx = opt.trg_pad_idx = field.vocab.stoi[Constants.PAD_WORD]
     opt.src_vocab_size = opt.trg_vocab_size = len(field.vocab)
