@@ -99,7 +99,7 @@ class Translator(nn.Module):
                 # -- locate the eos in the generated sequences
                 eos_locs = gen_seq == trg_eos_idx   
                 # -- replace the eos with its position for the length penalty use
-                seq_lens, _ = self.len_map.masked_fill(1 - eos_locs, max_seq_len).min(1)
+                seq_lens, _ = self.len_map.masked_fill(~eos_locs, max_seq_len).min(1)
                 # -- check if all beams contain eos
                 if (eos_locs.sum(1) > 0).sum(0).item() == beam_size:
                     # TODO: Try different terminate conditions.

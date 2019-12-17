@@ -98,7 +98,7 @@ def main():
             pred_line = ' '.join(TRG.vocab.itos[idx] for idx in pred_seq)
             pred_line = pred_line.replace(Constants.BOS_WORD, '').replace(Constants.EOS_WORD, '')
             #print(pred_line)
-            f.write(pred_line + '\n')
+            f.write(pred_line.strip() + '\n')
 
     print('[Info] Finished.')
 

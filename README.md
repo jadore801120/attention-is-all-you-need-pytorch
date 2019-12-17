@@ -26,8 +26,8 @@ If there is any suggestion or error, feel free to fire an issue to let me know. 
 
 # Requirement
 - python 3.4+
-- pytorch 1.1.0+
-- torchtext 0.3.1+
+- pytorch 1.3.1
+- torchtext 0.4.0
 - spacy 2.2.2+
 - tqdm
 - dill

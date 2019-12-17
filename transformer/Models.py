@@ -13,14 +13,10 @@ def get_pad_mask(seq, pad_idx):
 
 
 def get_subsequent_mask(seq):
-    sz_b, len_s = seq.size()
-    return _get_subsequent_mask(len_s, seq.device)
-
-
-def _get_subsequent_mask(len_s, device):
     ''' For masking out the subsequent info. '''
-    subsequent_mask = 1 - torch.triu(
-        torch.ones((1, len_s, len_s), device=device, dtype=torch.uint8), diagonal=1)
+    sz_b, len_s = seq.size()
+    subsequent_mask = (1 - torch.triu(
+        torch.ones((1, len_s, len_s), device=seq.device), diagonal=1)).bool()
     return subsequent_mask
 
 
