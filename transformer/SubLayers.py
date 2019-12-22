@@ -47,15 +47,15 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             mask = mask.unsqueeze(1)   # For head axis broadcasting.
 
-        output, attn = self.attention(q, k, v, mask=mask)
+        q, attn = self.attention(q, k, v, mask=mask)
 
         # Transpose to move the head dimension back: b x lq x n x dv
         # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)
-        output = output.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
-        output = self.dropout(self.fc(output))
-        output += residual
+        q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
+        q = self.dropout(self.fc(q))
+        q += residual
 
-        return output, attn
+        return q, attn
 
 
 class PositionwiseFeedForward(nn.Module):
@@ -73,8 +73,8 @@ class PositionwiseFeedForward(nn.Module):
         residual = x
         x = self.layer_norm(x)
 
-        output = self.w_2(F.relu(self.w_1(x)))
-        output = self.dropout(output)
-        output += residual
+        x = self.w_2(F.relu(self.w_1(x)))
+        x = self.dropout(x)
+        x += residual
 
-        return output
+        return x
