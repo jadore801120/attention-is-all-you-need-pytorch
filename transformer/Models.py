@@ -166,10 +166,11 @@ class Transformer(nn.Module):
     def forward(self, src_seq, trg_seq):
 
         src_mask = get_pad_mask(src_seq, self.src_pad_idx)
-        trg_mask = get_pad_mask(trg_seq, self.trg_pad_idx) & get_subsequent_mask(trg_seq)
-
+        look_ahead_mask = get_pad_mask(trg_seq, self.trg_pad_idx) & get_subsequent_mask(trg_seq)
+        trg_mask = get_pad_mask(trg_seq, self.trg_pad_idx)
+        
         enc_output, *_ = self.encoder(src_seq, src_mask)
-        dec_output, *_ = self.decoder(trg_seq, trg_mask, enc_output, src_mask)
+        dec_output, *_ = self.decoder(trg_seq, look_ahead_mask, enc_output, trg_mask)
         seq_logit = self.trg_word_prj(dec_output) * self.x_logit_scale
 
         return seq_logit.view(-1, seq_logit.size(2))
