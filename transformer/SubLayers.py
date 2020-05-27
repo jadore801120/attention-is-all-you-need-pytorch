@@ -33,7 +33,6 @@ class MultiHeadAttention(nn.Module):
         sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
 
         residual = q
-        q = self.layer_norm(q)
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
@@ -43,7 +42,7 @@ class MultiHeadAttention(nn.Module):
 
         # Transpose for attention dot product: b x n x lq x dv
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
-        
+
         if mask is not None:
             mask = mask.unsqueeze(1)   # For head axis broadcasting.
 
@@ -54,6 +53,8 @@ class MultiHeadAttention(nn.Module):
         q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
         q = self.dropout(self.fc(q))
         q += residual
+
+        q = self.layer_norm(q)
 
         return q, attn
 
