@@ -69,12 +69,11 @@ class Encoder(nn.Module):
         # -- Forward
         
         enc_output = self.dropout(self.position_enc(self.src_word_emb(src_seq)))
+        enc_output = self.layer_norm(enc_output)
 
         for enc_layer in self.layer_stack:
             enc_output, enc_slf_attn = enc_layer(enc_output, slf_attn_mask=src_mask)
             enc_slf_attn_list += [enc_slf_attn] if return_attns else []
-
-        enc_output = self.layer_norm(enc_output)
 
         if return_attns:
             return enc_output, enc_slf_attn_list
@@ -104,14 +103,13 @@ class Decoder(nn.Module):
 
         # -- Forward
         dec_output = self.dropout(self.position_enc(self.trg_word_emb(trg_seq)))
+        dec_output = self.layer_norm(dec_output)
 
         for dec_layer in self.layer_stack:
             dec_output, dec_slf_attn, dec_enc_attn = dec_layer(
                 dec_output, enc_output, slf_attn_mask=trg_mask, dec_enc_attn_mask=src_mask)
             dec_slf_attn_list += [dec_slf_attn] if return_attns else []
             dec_enc_attn_list += [dec_enc_attn] if return_attns else []
-
-        dec_output = self.layer_norm(dec_output)
 
         if return_attns:
             return dec_output, dec_slf_attn_list, dec_enc_attn_list
