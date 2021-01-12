@@ -50,7 +50,7 @@ class Encoder(nn.Module):
 
     def __init__(
             self, n_src_vocab, d_word_vec, n_layers, n_head, d_k, d_v,
-            d_model, d_inner, pad_idx, dropout=0.1, n_position=200):
+            d_model, d_inner, pad_idx, dropout=0.1, n_position=200, scale_emb=False):
 
         super().__init__()
 
@@ -61,14 +61,18 @@ class Encoder(nn.Module):
             EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
+        self.scale_emb = scale_emb
+        self.d_model = d_model
 
     def forward(self, src_seq, src_mask, return_attns=False):
 
         enc_slf_attn_list = []
 
         # -- Forward
-        
-        enc_output = self.dropout(self.position_enc(self.src_word_emb(src_seq)))
+        enc_output = self.src_word_emb(src_seq)
+        if self.scale_emb:
+            enc_output *= self.d_model ** 0.5
+        enc_output = self.dropout(self.position_enc(enc_output))
         enc_output = self.layer_norm(enc_output)
 
         for enc_layer in self.layer_stack:
@@ -85,7 +89,7 @@ class Decoder(nn.Module):
 
     def __init__(
             self, n_trg_vocab, d_word_vec, n_layers, n_head, d_k, d_v,
-            d_model, d_inner, pad_idx, n_position=200, dropout=0.1):
+            d_model, d_inner, pad_idx, n_position=200, dropout=0.1, scale_emb=False):
 
         super().__init__()
 
@@ -96,13 +100,18 @@ class Decoder(nn.Module):
             DecoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
             for _ in range(n_layers)])
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
+        self.scale_emb = scale_emb
+        self.d_model = d_model
 
     def forward(self, trg_seq, trg_mask, enc_output, src_mask, return_attns=False):
 
         dec_slf_attn_list, dec_enc_attn_list = [], []
 
         # -- Forward
-        dec_output = self.dropout(self.position_enc(self.trg_word_emb(trg_seq)))
+        dec_output = self.trg_word_emb(trg_seq)
+        if self.scale_emb:
+            dec_output *= self.d_model ** 0.5
+        dec_output = self.dropout(self.position_enc(dec_output))
         dec_output = self.layer_norm(dec_output)
 
         for dec_layer in self.layer_stack:
@@ -123,23 +132,39 @@ class Transformer(nn.Module):
             self, n_src_vocab, n_trg_vocab, src_pad_idx, trg_pad_idx,
             d_word_vec=512, d_model=512, d_inner=2048,
             n_layers=6, n_head=8, d_k=64, d_v=64, dropout=0.1, n_position=200,
-            trg_emb_prj_weight_sharing=True, emb_src_trg_weight_sharing=True):
+            trg_emb_prj_weight_sharing=True, emb_src_trg_weight_sharing=True,
+            scale_emb_or_prj='prj'):
 
         super().__init__()
 
         self.src_pad_idx, self.trg_pad_idx = src_pad_idx, trg_pad_idx
 
+        # In section 3.4 of paper "Attention Is All You Need", there is such detail:
+        # "In our model, we share the same weight matrix between the two
+        # embedding layers and the pre-softmax linear transformation...
+        # In the embedding layers, we multiply those weights by \sqrt{d_model}".
+        #
+        # Options here:
+        #   'emb': multiply \sqrt{d_model} to embedding output
+        #   'prj': multiply (\sqrt{d_model} ^ -1) to linear projection output
+        #   'none': no multiplication
+
+        assert scale_emb_or_prj in ['emb', 'prj', 'none']
+        scale_emb = (scale_emb_or_prj == 'emb') if trg_emb_prj_weight_sharing else False
+        self.scale_prj = (scale_emb_or_prj == 'prj') if trg_emb_prj_weight_sharing else False
+        self.d_model = d_model
+
         self.encoder = Encoder(
             n_src_vocab=n_src_vocab, n_position=n_position,
             d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner,
             n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,
-            pad_idx=src_pad_idx, dropout=dropout)
+            pad_idx=src_pad_idx, dropout=dropout, scale_emb=scale_emb)
 
         self.decoder = Decoder(
             n_trg_vocab=n_trg_vocab, n_position=n_position,
             d_word_vec=d_word_vec, d_model=d_model, d_inner=d_inner,
             n_layers=n_layers, n_head=n_head, d_k=d_k, d_v=d_v,
-            pad_idx=trg_pad_idx, dropout=dropout)
+            pad_idx=trg_pad_idx, dropout=dropout, scale_emb=scale_emb)
 
         self.trg_word_prj = nn.Linear(d_model, n_trg_vocab, bias=False)
 
@@ -151,11 +176,9 @@ class Transformer(nn.Module):
         'To facilitate the residual connections, \
          the dimensions of all module outputs shall be the same.'
 
-        self.x_logit_scale = 1.
         if trg_emb_prj_weight_sharing:
             # Share the weight between target word embedding & last dense layer
             self.trg_word_prj.weight = self.decoder.trg_word_emb.weight
-            self.x_logit_scale = (d_model ** -0.5)
 
         if emb_src_trg_weight_sharing:
             self.encoder.src_word_emb.weight = self.decoder.trg_word_emb.weight
@@ -168,6 +191,8 @@ class Transformer(nn.Module):
 
         enc_output, *_ = self.encoder(src_seq, src_mask)
         dec_output, *_ = self.decoder(trg_seq, trg_mask, enc_output, src_mask)
-        seq_logit = self.trg_word_prj(dec_output) * self.x_logit_scale
+        seq_logit = self.trg_word_prj(dec_output)
+        if self.scale_prj:
+            seq_logit *= self.d_model ** -0.5
 
         return seq_logit.view(-1, seq_logit.size(2))

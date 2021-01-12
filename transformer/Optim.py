@@ -4,9 +4,9 @@ import numpy as np
 class ScheduledOptim():
     '''A simple wrapper class for learning rate scheduling'''
 
-    def __init__(self, optimizer, init_lr, d_model, n_warmup_steps):
+    def __init__(self, optimizer, lr_mul, d_model, n_warmup_steps):
         self._optimizer = optimizer
-        self.init_lr = init_lr
+        self.lr_mul = lr_mul
         self.d_model = d_model
         self.n_warmup_steps = n_warmup_steps
         self.n_steps = 0
@@ -33,7 +33,7 @@ class ScheduledOptim():
         ''' Learning rate scheduling per step '''
 
         self.n_steps += 1
-        lr = self.init_lr * self._get_lr_scale()
+        lr = self.lr_mul * self._get_lr_scale()
 
         for param_group in self._optimizer.param_groups:
             param_group['lr'] = lr
