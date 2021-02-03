@@ -32,6 +32,7 @@ If there is any suggestion or error, feel free to fire an issue to let me know. 
 - tqdm
 - dill
 - numpy
+- tensorboard
 
 
 # Usage
@@ -54,7 +55,7 @@ python preprocess.py -lang_src de -lang_trg en -share_vocab -save_data m30k_deen
 
 ### 2) Train the model
 ```bash
-python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000 -epoch 400
+python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -output_dir output -b 256 -warmup 128000 -epoch 400
 ```
 
 ### 3) Test the model
@@ -73,7 +74,7 @@ python preprocess.py -raw_dir /tmp/raw_deen -data_dir ./bpe_deen -save_data bpe_
 
 ### 2) Train the model
 ```bash
-python train.py -data_pkl ./bpe_deen/bpe_vocab.pkl -train_path ./bpe_deen/deen-train -val_path ./bpe_deen/deen-val -log deen_bpe -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000 -epoch 400
+python train.py -data_pkl ./bpe_deen/bpe_vocab.pkl -train_path ./bpe_deen/deen-train -val_path ./bpe_deen/deen-val -log deen_bpe -embs_share_weight -proj_share_weight -label_smoothing -output_dir output -b 256 -warmup 128000 -epoch 400
 ```
 
 ### 3) Test the model (not ready)

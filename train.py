@@ -7,6 +7,9 @@ import math
 import time
 import dill as pickle
 from tqdm import tqdm
+import numpy as np
+import random
+import os
 
 import torch
 import torch.nn.functional as F
@@ -131,24 +134,26 @@ def eval_epoch(model, validation_data, device, opt):
 def train(model, training_data, validation_data, optimizer, device, opt):
     ''' Start training '''
 
-    log_train_file, log_valid_file = None, None
+    # Use tensorboard to plot curves, e.g. perplexity, accuracy, learning rate
+    if opt.use_tb:
+        from torch.utils.tensorboard import SummaryWriter
+        tb_writer = SummaryWriter(log_dir=os.path.join(opt.output_dir, 'tensorboard'))
 
-    if opt.log:
-        log_train_file = opt.log + '.train.log'
-        log_valid_file = opt.log + '.valid.log'
+    log_train_file = os.path.join(opt.output_dir, 'train.log')
+    log_valid_file = os.path.join(opt.output_dir, 'valid.log')
 
-        print('[Info] Training performance will be written to file: {} and {}'.format(
-            log_train_file, log_valid_file))
+    print('[Info] Training performance will be written to file: {} and {}'.format(
+        log_train_file, log_valid_file))
 
-        with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
-            log_tf.write('epoch,loss,ppl,accuracy\n')
-            log_vf.write('epoch,loss,ppl,accuracy\n')
+    with open(log_train_file, 'w') as log_tf, open(log_valid_file, 'w') as log_vf:
+        log_tf.write('epoch,loss,ppl,accuracy\n')
+        log_vf.write('epoch,loss,ppl,accuracy\n')
 
-    def print_performances(header, loss, accu, start_time):
-        print('  - {header:12} ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
+    def print_performances(header, ppl, accu, start_time, lr):
+        print('  - {header:12} ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, lr: {lr:8.5f}, '\
               'elapse: {elapse:3.3f} min'.format(
-                  header=f"({header})", ppl=math.exp(min(loss, 100)),
-                  accu=100*accu, elapse=(time.time()-start_time)/60))
+                  header=f"({header})", ppl=ppl,
+                  accu=100*accu, elapse=(time.time()-start_time)/60, lr=lr))
 
     #valid_accus = []
     valid_losses = []
@@ -158,39 +163,46 @@ def train(model, training_data, validation_data, optimizer, device, opt):
         start = time.time()
         train_loss, train_accu = train_epoch(
             model, training_data, optimizer, opt, device, smoothing=opt.label_smoothing)
-        print_performances('Training', train_loss, train_accu, start)
+        train_ppl = math.exp(min(train_loss, 100))
+        # Current learning rate
+        lr = optimizer._optimizer.param_groups[0]['lr']
+        print_performances('Training', train_ppl, train_accu, start, lr)
 
         start = time.time()
         valid_loss, valid_accu = eval_epoch(model, validation_data, device, opt)
-        print_performances('Validation', valid_loss, valid_accu, start)
+        valid_ppl = math.exp(min(valid_loss, 100))
+        print_performances('Validation', valid_ppl, valid_accu, start, lr)
 
         valid_losses += [valid_loss]
 
         checkpoint = {'epoch': epoch_i, 'settings': opt, 'model': model.state_dict()}
 
-        if opt.save_model:
-            if opt.save_mode == 'all':
-                model_name = opt.save_model + '_accu_{accu:3.3f}.chkpt'.format(accu=100*valid_accu)
-                torch.save(checkpoint, model_name)
-            elif opt.save_mode == 'best':
-                model_name = opt.save_model + '.chkpt'
-                if valid_loss <= min(valid_losses):
-                    torch.save(checkpoint, model_name)
-                    print('    - [Info] The checkpoint file has been updated.')
+        if opt.save_mode == 'all':
+            model_name = 'model_accu_{accu:3.3f}.chkpt'.format(accu=100*valid_accu)
+            torch.save(checkpoint, model_name)
+        elif opt.save_mode == 'best':
+            model_name = 'model.chkpt'
+            if valid_loss <= min(valid_losses):
+                torch.save(checkpoint, os.path.join(opt.output_dir, model_name))
+                print('    - [Info] The checkpoint file has been updated.')
 
-        if log_train_file and log_valid_file:
-            with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
-                log_tf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
-                    epoch=epoch_i, loss=train_loss,
-                    ppl=math.exp(min(train_loss, 100)), accu=100*train_accu))
-                log_vf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
-                    epoch=epoch_i, loss=valid_loss,
-                    ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu))
+        with open(log_train_file, 'a') as log_tf, open(log_valid_file, 'a') as log_vf:
+            log_tf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
+                epoch=epoch_i, loss=train_loss,
+                ppl=train_ppl, accu=100*train_accu))
+            log_vf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
+                epoch=epoch_i, loss=valid_loss,
+                ppl=valid_ppl, accu=100*valid_accu))
+
+        if opt.use_tb:
+            tb_writer.add_scalars('ppl', {'train': train_ppl, 'val': valid_ppl}, epoch_i)
+            tb_writer.add_scalars('accuracy', {'train': train_accu*100, 'val': valid_accu*100}, epoch_i)
+            tb_writer.add_scalar('learning_rate', lr, epoch_i)
 
 def main():
     ''' 
     Usage:
-    python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -save_model trained -b 256 -warmup 128000
+    python train.py -data_pkl m30k_deen_shr.pkl -log m30k_deen_shr -embs_share_weight -proj_share_weight -label_smoothing -output_dir output -b 256 -warmup 128000
     '''
 
     parser = argparse.ArgumentParser()
@@ -211,13 +223,16 @@ def main():
     parser.add_argument('-n_head', type=int, default=8)
     parser.add_argument('-n_layers', type=int, default=6)
     parser.add_argument('-warmup','--n_warmup_steps', type=int, default=4000)
+    parser.add_argument('-lr_mul', type=float, default=2.0)
+    parser.add_argument('-seed', type=int, default=None)
 
     parser.add_argument('-dropout', type=float, default=0.1)
     parser.add_argument('-embs_share_weight', action='store_true')
     parser.add_argument('-proj_share_weight', action='store_true')
+    parser.add_argument('-scale_emb_or_prj', type=str, default='prj')
 
-    parser.add_argument('-log', default=None)
-    parser.add_argument('-save_model', default=None)
+    parser.add_argument('-output_dir', type=str, default=None)
+    parser.add_argument('-use_tb', action='store_true')
     parser.add_argument('-save_mode', type=str, choices=['all', 'best'], default='best')
 
     parser.add_argument('-no_cuda', action='store_true')
@@ -227,9 +242,21 @@ def main():
     opt.cuda = not opt.no_cuda
     opt.d_word_vec = opt.d_model
 
-    if not opt.log and not opt.save_model:
+    # https://pytorch.org/docs/stable/notes/randomness.html
+    # For reproducibility
+    if opt.seed is not None:
+        torch.manual_seed(opt.seed)
+        torch.backends.cudnn.benchmark = False
+        torch.set_deterministic(True)
+        np.random.seed(opt.seed)
+        random.seed(opt.seed)
+
+    if not opt.output_dir:
         print('No experiment result will be saved.')
         raise
+
+    if not os.path.exists(opt.output_dir):
+        os.makedirs(opt.output_dir)
 
     if opt.batch_size < 2048 and opt.n_warmup_steps <= 4000:
         print('[Warning] The warmup steps may be not enough.\n'\
@@ -264,11 +291,12 @@ def main():
         d_inner=opt.d_inner_hid,
         n_layers=opt.n_layers,
         n_head=opt.n_head,
-        dropout=opt.dropout).to(device)
+        dropout=opt.dropout,
+        scale_emb_or_prj=opt.scale_emb_or_prj).to(device)
 
     optimizer = ScheduledOptim(
         optim.Adam(transformer.parameters(), betas=(0.9, 0.98), eps=1e-09),
-        2.0, opt.d_model, opt.n_warmup_steps)
+        opt.lr_mul, opt.d_model, opt.n_warmup_steps)
 
     train(transformer, training_data, validation_data, optimizer, device, opt)
 
