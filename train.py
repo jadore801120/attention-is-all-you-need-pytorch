@@ -136,6 +136,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
 
     # Use tensorboard to plot curves, e.g. perplexity, accuracy, learning rate
     if opt.use_tb:
+        print("[Info] Use Tensorboard")
         from torch.utils.tensorboard import SummaryWriter
         tb_writer = SummaryWriter(log_dir=os.path.join(opt.output_dir, 'tensorboard'))
 
@@ -247,7 +248,7 @@ def main():
     if opt.seed is not None:
         torch.manual_seed(opt.seed)
         torch.backends.cudnn.benchmark = False
-        torch.set_deterministic(True)
+        # torch.set_deterministic(True)
         np.random.seed(opt.seed)
         random.seed(opt.seed)
 
