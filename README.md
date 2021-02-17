@@ -24,17 +24,6 @@ Note that this project is still a work in progress.
 If there is any suggestion or error, feel free to fire an issue to let me know. :)
 
 
-# Requirement
-- python 3.4+
-- pytorch 1.3.1
-- torchtext 0.4.0
-- spacy 2.2.2+
-- tqdm
-- dill
-- numpy
-- tensorboard
-
-
 # Usage
 
 ## WMT'16 Multimodal Translation: de-en
@@ -86,18 +75,19 @@ python train.py -data_pkl ./bpe_deen/bpe_vocab.pkl -train_path ./bpe_deen/deen-t
 ## Training
 
 <p align="center">
-<img src="https://imgur.com/rKeP1bb.png" width="400">
-<img src="https://imgur.com/9je3X6U.png" width="400">
+<img src="https://i.imgur.com/S2EVtJx.png" width="400">
+<img src="https://i.imgur.com/IZQmUKO.png" width="400">
 </p>
 
 - Parameter settings:
-  - default parameter and optimizer settings
+  - batch size 256 
+  - warmup step 4000 
+  - epoch 200 
+  - lr_mul 0.5
   - label smoothing 
+  - do not apply BPE and shared vocabulary
   - target embedding / pre-softmax linear layer weight sharing. 
-
-- Elapse per epoch (on NVIDIA Titan X):
-  - Training set: 0.888 minutes
-  - Validation set: 0.011 minutes
+ 
   
 ## Testing 
 - coming soon.
@@ -109,4 +99,4 @@ python train.py -data_pkl ./bpe_deen/bpe_vocab.pkl -train_path ./bpe_deen/deen-t
 # Acknowledgement
 - The byte pair encoding parts are borrowed from [subword-nmt](https://github.com/rsennrich/subword-nmt/).
 - The project structure, some scripts and the dataset preprocessing steps are heavily borrowed from [OpenNMT/OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py).
-- Thanks for the suggestions from @srush, @iamalbert, @Zessay, @JulesGM and @ZiJianZhao.
+- Thanks for the suggestions from @srush, @iamalbert, @Zessay, @JulesGM, @ZiJianZhao, and @huanghoujing.
