@@ -13,7 +13,8 @@ import tarfile
 import torchtext.data
 import torchtext.datasets
 # from torchtext.datasets import TranslationDataset
-from libs.datasets import TranslationDataset  # https://pytorch.org/text/_modules/torchtext/datasets/translation.html
+#from libs.datasets import TranslationDataset  # https://pytorch.org/text/_modules/torchtext/datasets/translation.html
+from torchtext.datasets import TranslationDataset
 import transformer.Constants as Constants
 from learn_bpe import learn_bpe
 from apply_bpe import BPE

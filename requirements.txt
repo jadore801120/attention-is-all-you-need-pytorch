@@ -7,3 +7,4 @@ tensorboard==2.8
 tensorflow==2.8.4
 terminado==0.9.2
 tqdm==4.56.0
+torchtext==0.6.0
