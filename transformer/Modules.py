@@ -18,7 +18,7 @@ class ScaledDotProductAttention(nn.Module):
 
         if mask is not None:
             attn = attn.masked_fill(mask == 0, -1e9)
-
+        # * 看起来比原文多了个 dropout
         attn = self.dropout(F.softmax(attn, dim=-1))
         output = torch.matmul(attn, v)
 
