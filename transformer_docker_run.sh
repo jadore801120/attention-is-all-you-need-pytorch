@@ -1,0 +1,1 @@
+docker run --rm -it -v /Users/bytedance/Desktop/ai_infra/attention-is-all-you-need-pytorch:/transformer ss4g/transformer_env_torch /bin/bash 

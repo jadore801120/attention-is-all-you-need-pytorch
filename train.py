@@ -76,6 +76,7 @@ def train_epoch(model, training_data, optimizer, opt, device, smoothing):
     total_loss, n_word_total, n_word_correct = 0, 0, 0 
 
     desc = '  - (Training)   '
+    # * 训练每一个batch
     for batch in tqdm(training_data, mininterval=2, desc=desc, leave=False):
 
         # prepare data
@@ -89,7 +90,8 @@ def train_epoch(model, training_data, optimizer, opt, device, smoothing):
         # backward and update parameters
         loss, n_correct, n_word = cal_performance(
             pred, gold, opt.trg_pad_idx, smoothing=smoothing) 
-        loss.backward()
+        loss.backward() # * 计算梯度
+        # * 更新参数
         optimizer.step_and_update_lr()
 
         # note keeping
@@ -162,6 +164,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
         print('[ Epoch', epoch_i, ']')
 
         start = time.time()
+        # * train 单个epoch
         train_loss, train_accu = train_epoch(
             model, training_data, optimizer, opt, device, smoothing=opt.label_smoothing)
         train_ppl = math.exp(min(train_loss, 100))
@@ -170,6 +173,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
         print_performances('Training', train_ppl, train_accu, start, lr)
 
         start = time.time()
+        # * 使用验证集验证数据
         valid_loss, valid_accu = eval_epoch(model, validation_data, device, opt)
         valid_ppl = math.exp(min(valid_loss, 100))
         print_performances('Validation', valid_ppl, valid_accu, start, lr)
@@ -278,6 +282,7 @@ def main():
 
     print(opt)
 
+    # * 这里是设置transformer参数
     transformer = Transformer(
         opt.src_vocab_size,
         opt.trg_vocab_size,
@@ -295,6 +300,7 @@ def main():
         dropout=opt.dropout,
         scale_emb_or_prj=opt.scale_emb_or_prj).to(device)
 
+    # * 设置优化器
     optimizer = ScheduledOptim(
         optim.Adam(transformer.parameters(), betas=(0.9, 0.98), eps=1e-09),
         opt.lr_mul, opt.d_model, opt.n_warmup_steps)

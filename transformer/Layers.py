@@ -7,8 +7,9 @@ from transformer.SubLayers import MultiHeadAttention, PositionwiseFeedForward
 __author__ = "Yu-Hsiang Huang"
 
 
-class EncoderLayer(nn.Module):
+class EncoderLayer(nn.Module): 
     ''' Compose with two layers '''
+    # * 一个encode layer 包含一个MHA 以及 layernorm + feedforward
 
     def __init__(self, d_model, d_inner, n_head, d_k, d_v, dropout=0.1):
         super(EncoderLayer, self).__init__()
@@ -20,7 +21,6 @@ class EncoderLayer(nn.Module):
             enc_input, enc_input, enc_input, mask=slf_attn_mask)
         enc_output = self.pos_ffn(enc_output)
         return enc_output, enc_slf_attn
-
 
 class DecoderLayer(nn.Module):
     ''' Compose with three layers '''

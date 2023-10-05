@@ -12,7 +12,8 @@ import torch
 import tarfile
 import torchtext.data
 import torchtext.datasets
-from torchtext.datasets import TranslationDataset
+#from torchtext.datasets import TranslationDataset
+from torchtext.legacy.datasets import TranslationDataset
 import transformer.Constants as Constants
 from learn_bpe import learn_bpe
 from apply_bpe import BPE
@@ -332,5 +333,5 @@ def main_wo_bpe():
 
 
 if __name__ == '__main__':
-    main_wo_bpe()
-    #main()
+    #main_wo_bpe()
+    main()

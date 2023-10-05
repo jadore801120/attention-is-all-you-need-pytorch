@@ -42,8 +42,9 @@ class PositionalEncoding(nn.Module):
         return torch.FloatTensor(sinusoid_table).unsqueeze(0)
 
     def forward(self, x):
+        # * 位置编码不需要梯度回传 所以会有detach
+        # * 这里将输入和pos+encoding 相加
         return x + self.pos_table[:, :x.size(1)].clone().detach()
-
 
 class Encoder(nn.Module):
     ''' A encoder model with self attention mechanism. '''
@@ -57,8 +58,9 @@ class Encoder(nn.Module):
         self.src_word_emb = nn.Embedding(n_src_vocab, d_word_vec, padding_idx=pad_idx)
         self.position_enc = PositionalEncoding(d_word_vec, n_position=n_position)
         self.dropout = nn.Dropout(p=dropout)
+        # * 看起来这里是 MHA的实现逻辑 多个Encodelayer 堆叠。encodelayer 内部包含MHA 以及layernorm
         self.layer_stack = nn.ModuleList([
-            EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout)
+            EncoderLayer(d_model, d_inner, n_head, d_k, d_v, dropout=dropout) 
             for _ in range(n_layers)])
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
         self.scale_emb = scale_emb
@@ -69,17 +71,18 @@ class Encoder(nn.Module):
         enc_slf_attn_list = []
 
         # -- Forward
-        enc_output = self.src_word_emb(src_seq)
+        enc_output = self.src_word_emb(src_seq) # * src_seq 应该是词表索引 通过查找表获取对应的embedding
         if self.scale_emb:
             enc_output *= self.d_model ** 0.5
         enc_output = self.dropout(self.position_enc(enc_output))
         enc_output = self.layer_norm(enc_output)
 
         for enc_layer in self.layer_stack:
+            # * 计算每个encoder layer 每个layer的输出是下一个layer的输入
             enc_output, enc_slf_attn = enc_layer(enc_output, slf_attn_mask=src_mask)
             enc_slf_attn_list += [enc_slf_attn] if return_attns else []
 
-        if return_attns:
+        if return_attns: # * 这里看起来是为了打印出权重
             return enc_output, enc_slf_attn_list
         return enc_output,
 
@@ -185,7 +188,7 @@ class Transformer(nn.Module):
 
 
     def forward(self, src_seq, trg_seq):
-
+        # ? 这里的mask都是怎么用的?
         src_mask = get_pad_mask(src_seq, self.src_pad_idx)
         trg_mask = get_pad_mask(trg_seq, self.trg_pad_idx) & get_subsequent_mask(trg_seq)
 
